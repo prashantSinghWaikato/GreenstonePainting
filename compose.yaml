@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: greenstone_painting
+      POSTGRES_USER: greenstone
+      POSTGRES_PASSWORD: greenstone
+    ports:
+      - "5432:5432"
+    volumes:
+      - greenstone_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U greenstone -d greenstone_painting"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  greenstone_postgres_data:
