@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface EnquiryAttachmentRepository extends JpaRepository<EnquiryAttachment, UUID> {
     List<EnquiryAttachment> findAllByEnquiryId(UUID enquiryId);
+    long countByEnquiryId(UUID enquiryId);
 }

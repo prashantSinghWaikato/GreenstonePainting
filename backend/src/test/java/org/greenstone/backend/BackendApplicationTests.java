@@ -3,7 +3,6 @@ package org.greenstone.backend;
 import org.greenstone.backend.persistence.entity.Enquiry;
 import org.greenstone.backend.persistence.entity.EnquiryStatus;
 import org.greenstone.backend.persistence.entity.EnquiryType;
-import org.greenstone.backend.persistence.entity.ServiceOffering;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.ServiceOfferingRepository;
 import org.junit.jupiter.api.Test;
@@ -31,14 +30,7 @@ class BackendApplicationTests {
     @Test
     @Transactional
     void persistsAQuoteEnquiryForAService() {
-        var service = new ServiceOffering(
-                "interior-painting",
-                "Interior Painting",
-                "Professional interior painting for homes and businesses.",
-                "Preparation, painting, and finishing for interior spaces.",
-                1
-        );
-        serviceOfferingRepository.save(service);
+        var service = serviceOfferingRepository.findBySlug("interior-painting").orElseThrow();
 
         var enquiry = new Enquiry(
                 EnquiryType.QUOTE_REQUEST,

@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "enquiries")
@@ -62,6 +63,12 @@ public class Enquiry extends BaseEntity {
     @Column(name = "internal_notes", length = 10000)
     private String internalNotes;
 
+    @Column(name = "upload_token_hash", length = 64)
+    private String uploadTokenHash;
+
+    @Column(name = "upload_token_expires_at")
+    private OffsetDateTime uploadTokenExpiresAt;
+
     protected Enquiry() {
     }
 
@@ -101,4 +108,8 @@ public class Enquiry extends BaseEntity {
     public void setDesiredStartDate(LocalDate desiredStartDate) { this.desiredStartDate = desiredStartDate; }
     public String getInternalNotes() { return internalNotes; }
     public void setInternalNotes(String internalNotes) { this.internalNotes = internalNotes; }
+    public String getUploadTokenHash() { return uploadTokenHash; }
+    public void setUploadTokenHash(String uploadTokenHash) { this.uploadTokenHash = uploadTokenHash; }
+    public OffsetDateTime getUploadTokenExpiresAt() { return uploadTokenExpiresAt; }
+    public void setUploadTokenExpiresAt(OffsetDateTime uploadTokenExpiresAt) { this.uploadTokenExpiresAt = uploadTokenExpiresAt; }
 }

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
-import { Building2, Clock, Fence, Hammer, House, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent, DragEvent, FormEvent } from 'react'
+import { AlertCircle, Building2, Check, Clock, Fence, Hammer, House, ImagePlus, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone, RotateCcw, X } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
+import { createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
 import { articles, heroSlides, projects, serviceAreas, services } from './data/site'
 import './App.css'
 
 type QuoteFormState = {
-  fullName: string
+  firstName: string
+  lastName: string
   email: string
   phone: string
   location: string
@@ -15,7 +17,8 @@ type QuoteFormState = {
 }
 
 const initialQuoteForm: QuoteFormState = {
-  fullName: '',
+  firstName: '',
+  lastName: '',
   email: '',
   phone: '',
   location: '',
@@ -24,14 +27,93 @@ const initialQuoteForm: QuoteFormState = {
 }
 
 const serviceIcons = [Paintbrush, House, Building2, PaintBucket, Hammer, Fence]
+const maximumPhotoCount = 4
+const maximumPhotoSize = 5 * 1024 * 1024
+const acceptedPhotoTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+
+type SelectedPhoto = {
+  id: string
+  file: File
+  previewUrl: string
+  status: 'ready' | 'uploading' | 'uploaded' | 'failed'
+  error?: string
+}
+
+type UploadContext = {
+  enquiryId: string
+  uploadToken: string
+}
+
+type QuoteFormErrors = Partial<Record<keyof QuoteFormState, string>>
+
+const fieldLabels: Record<keyof QuoteFormState, string> = {
+  firstName: 'First name',
+  lastName: 'Last name',
+  email: 'Email',
+  phone: 'Phone',
+  location: 'Property location',
+  service: 'Service required',
+  message: 'Project description',
+}
+
+const fieldIds: Record<keyof QuoteFormState, string> = {
+  firstName: 'quote-first-name',
+  lastName: 'quote-last-name',
+  email: 'quote-email',
+  phone: 'quote-phone',
+  location: 'quote-location',
+  service: 'quote-service',
+  message: 'quote-message',
+}
+
+function validateQuoteField(field: keyof QuoteFormState, value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    const requiredMessages: Record<keyof QuoteFormState, string> = {
+      firstName: 'Enter your first name.',
+      lastName: 'Enter your last name.',
+      email: 'Enter your email address.',
+      phone: 'Enter your phone number.',
+      location: 'Enter the property location.',
+      service: 'Select the painting service you need.',
+      message: 'Tell us about your painting project.',
+    }
+    return requiredMessages[field]
+  }
+  if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return 'Enter a valid email address, for example name@example.co.nz.'
+  }
+  if (field === 'phone') {
+    const digitCount = trimmed.replace(/\D/g, '').length
+    if (!/^[+\d][\d\s().-]*$/.test(trimmed) || digitCount < 7 || digitCount > 15) {
+      return 'Enter a valid phone number using 7 to 15 digits.'
+    }
+  }
+  return ''
+}
+
+function validateQuoteForm(form: QuoteFormState): QuoteFormErrors {
+  return (Object.keys(form) as Array<keyof QuoteFormState>).reduce<QuoteFormErrors>((errors, field) => {
+    const error = validateQuoteField(field, form[field])
+    if (error) errors[field] = error
+    return errors
+  }, {})
+}
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeHero, setActiveHero] = useState(0)
   const [activeProject, setActiveProject] = useState(0)
   const [quoteForm, setQuoteForm] = useState(initialQuoteForm)
-  const [uploadCount, setUploadCount] = useState(0)
-  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submissionReference, setSubmissionReference] = useState('')
+  const [submissionError, setSubmissionError] = useState('')
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([])
+  const [photoError, setPhotoError] = useState('')
+  const [uploadContext, setUploadContext] = useState<UploadContext | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<QuoteFormErrors>({})
+  const photosRef = useRef<SelectedPhoto[]>([])
+  const quoteFormRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -40,14 +122,178 @@ function App() {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    photosRef.current = photos
+  }, [photos])
+
+  useEffect(() => () => photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl)), [])
+
   const updateField = <K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => {
     setQuoteForm((current) => ({ ...current, [field]: value }))
-    setSubmitted(false)
+    setFieldErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+    setSubmissionReference('')
+    setSubmissionError('')
   }
 
-  const submitQuote = (event: FormEvent<HTMLFormElement>) => {
+  const validateFieldOnBlur = (field: keyof QuoteFormState) => {
+    const error = validateQuoteField(field, quoteForm[field])
+    setFieldErrors((current) => {
+      const next = { ...current }
+      if (error) next[field] = error
+      else delete next[field]
+      return next
+    })
+  }
+
+  const focusFirstInvalidField = () => {
+    window.requestAnimationFrame(() => {
+      quoteFormRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+    })
+  }
+
+  const selectPhotos = (fileList: FileList | File[]) => {
+    if (uploadContext || submitting) return
+
+    const availableSlots = maximumPhotoCount - photos.length
+    const candidates = Array.from(fileList)
+    const accepted: SelectedPhoto[] = []
+    let validationMessage = ''
+
+    for (const file of candidates.slice(0, availableSlots)) {
+      const extension = file.name.split('.').pop()?.toLowerCase()
+      const supported = acceptedPhotoTypes.has(file.type) || (!file.type && (extension === 'heic' || extension === 'heif'))
+      if (!supported) {
+        validationMessage = 'Use JPEG, PNG, WebP, HEIC, or HEIF photos.'
+        continue
+      }
+      if (file.size > maximumPhotoSize) {
+        validationMessage = 'Each photo must be 5 MB or smaller.'
+        continue
+      }
+      accepted.push({ id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), status: 'ready' })
+    }
+
+    if (candidates.length > availableSlots) validationMessage = 'You can attach up to 4 photos.'
+    setPhotos((current) => [...current, ...accepted])
+    setPhotoError(validationMessage)
+  }
+
+  const handlePhotoInput = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) selectPhotos(event.target.files)
+    event.target.value = ''
+  }
+
+  const handlePhotoDrop = (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault()
-    setSubmitted(true)
+    selectPhotos(event.dataTransfer.files)
+  }
+
+  const removePhoto = (photoId: string) => {
+    const removed = photos.find((photo) => photo.id === photoId)
+    if (removed) URL.revokeObjectURL(removed.previewUrl)
+    const remaining = photos.filter((photo) => photo.id !== photoId)
+    setPhotos(remaining)
+    setPhotoError('')
+    if (uploadContext && remaining.length === 0) setUploadContext(null)
+  }
+
+  const uploadPhotos = async (context: UploadContext, selectedPhotos: SelectedPhoto[]) => {
+    const results = await Promise.all(selectedPhotos.map(async (photo) => {
+      setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, status: 'uploading', error: undefined } : item))
+      try {
+        await uploadEnquiryPhoto(context.enquiryId, context.uploadToken, photo.file)
+        setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, status: 'uploaded', error: undefined } : item))
+        return { id: photo.id, uploaded: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : `We could not upload ${photo.file.name}.`
+        setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, status: 'failed', error: message } : item))
+        return { id: photo.id, uploaded: false }
+      }
+    }))
+    return results
+  }
+
+  const finishPhotoUploads = (results: { id: string; uploaded: boolean }[]) => {
+    const uploadedIds = new Set(results.filter((result) => result.uploaded).map((result) => result.id))
+    photos.filter((photo) => uploadedIds.has(photo.id)).forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
+    const failedPhotos = photos.filter((photo) => !uploadedIds.has(photo.id))
+    setPhotos(failedPhotos)
+    if (failedPhotos.length === 0) {
+      setUploadContext(null)
+      setPhotoError('')
+    } else {
+      setPhotoError(`Your quote was saved, but ${failedPhotos.length} photo${failedPhotos.length === 1 ? '' : 's'} could not be uploaded. Please retry.`)
+    }
+  }
+
+  const submitQuote = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const validationErrors = validateQuoteForm(quoteForm)
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors)
+      setSubmissionError('')
+      setSubmissionReference('')
+      focusFirstInvalidField()
+      return
+    }
+
+    setSubmitting(true)
+    setSubmissionError('')
+    setSubmissionReference('')
+
+    try {
+      const response = await createEnquiry({
+        firstName: quoteForm.firstName,
+        lastName: quoteForm.lastName,
+        email: quoteForm.email,
+        phone: quoteForm.phone,
+        serviceSlug: quoteForm.service,
+        propertyAddress: quoteForm.location,
+        message: quoteForm.message,
+      })
+      const context = { enquiryId: response.id, uploadToken: response.uploadToken }
+      setSubmissionReference(response.id.slice(0, 8).toUpperCase())
+      setQuoteForm(initialQuoteForm)
+      setFieldErrors({})
+      if (photos.length > 0) {
+        setUploadContext(context)
+        const results = await uploadPhotos(context, photos)
+        finishPhotoUploads(results)
+      }
+    } catch (error) {
+      if (error instanceof EnquiryApiError && Object.keys(error.fieldErrors).length > 0) {
+        const backendFieldMap: Record<string, keyof QuoteFormState> = {
+          firstName: 'firstName', lastName: 'lastName', email: 'email', phone: 'phone',
+          propertyAddress: 'location', serviceSlug: 'service', message: 'message',
+        }
+        const backendErrors = Object.entries(error.fieldErrors).reduce<QuoteFormErrors>((errors, [field, message]) => {
+          const mappedField = backendFieldMap[field]
+          if (mappedField) errors[mappedField] = message
+          return errors
+        }, {})
+        setFieldErrors(backendErrors)
+        setSubmissionError('')
+        focusFirstInvalidField()
+      } else {
+        setSubmissionError(error instanceof Error ? error.message : 'We could not submit your request. Please try again.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const retryPhotoUploads = async () => {
+    if (!uploadContext || photos.length === 0) return
+    setSubmitting(true)
+    setPhotoError('')
+    const results = await uploadPhotos(uploadContext, photos)
+    finishPhotoUploads(results)
+    setSubmitting(false)
   }
 
   const closeMenu = () => setMenuOpen(false)
@@ -194,16 +440,42 @@ function App() {
 
         <section className="section quote-section" id="quote">
           <div className="page-container quote-layout">
-            <div className="quote-intro"><p className="eyebrow eyebrow-light">Online project request</p><h2>Start with a clearer quote.</h2><p>Tell us about your property, upload reference photos, and we will arrange the right next step.</p><div className="quote-assurance"><span>What happens next</span><ol><li>We review your project details</li><li>Our team contacts you</li><li>We arrange a site visit if required</li></ol></div></div>
-            <form className="quote-form rounded-card shadow-enterprise ring-1 ring-white/10" onSubmit={submitQuote}>
+            <div className="quote-intro"><p className="eyebrow eyebrow-light">Online project request</p><h2>Start with a clearer quote.</h2><p>Tell us about your property and we will arrange the right next step.</p><div className="quote-assurance"><span>What happens next</span><ol><li>We review your project details</li><li>Our team contacts you</li><li>We arrange a site visit if required</li></ol></div></div>
+            <form className="quote-form rounded-card shadow-enterprise ring-1 ring-white/10" ref={quoteFormRef} onSubmit={submitQuote} noValidate>
               <div className="form-heading"><div><span>Request form</span><h3>Project details</h3></div><p>Fields marked * are required</p></div>
-              <div className="form-row"><label>Full name *<input required autoComplete="name" value={quoteForm.fullName} onChange={(event) => updateField('fullName', event.target.value)} /></label><label>Email *<input required type="email" autoComplete="email" value={quoteForm.email} onChange={(event) => updateField('email', event.target.value)} /></label></div>
-              <div className="form-row"><label>Phone *<input required type="tel" autoComplete="tel" value={quoteForm.phone} onChange={(event) => updateField('phone', event.target.value)} /></label><label>Property location *<input required autoComplete="street-address" value={quoteForm.location} onChange={(event) => updateField('location', event.target.value)} /></label></div>
-              <label>Service required *<select required value={quoteForm.service} onChange={(event) => updateField('service', event.target.value)}><option value="">Select a service</option>{services.map((service) => <option value={service.slug} key={service.slug}>{service.title}</option>)}</select></label>
-              <label>Project description *<textarea required rows={4} placeholder="Property type, surfaces to paint, preferred timing, and anything else we should know." value={quoteForm.message} onChange={(event) => updateField('message', event.target.value)} /></label>
-              <label className="upload-field"><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setUploadCount(event.target.files?.length ?? 0)} /><span className="upload-icon" aria-hidden="true">＋</span><strong>{uploadCount ? `${uploadCount} photo${uploadCount > 1 ? 's' : ''} selected` : 'Upload project photos'}</strong><small>JPG, PNG or WebP · Add multiple files</small></label>
-              <div className="form-submit"><button className="button button-primary" type="submit">Submit Quote Request →</button><p>Your details will only be used to respond to this request.</p></div>
-              {submitted && <div className="form-success" role="status"><strong>Thanks, {quoteForm.fullName}.</strong><span>Your form is ready for backend connection in the next phase.</span></div>}
+              {Object.keys(fieldErrors).length > 0 && <div className="form-validation-summary" role="alert">
+                <AlertCircle size={19} aria-hidden="true" />
+                <div><strong>Please check {Object.keys(fieldErrors).length === 1 ? 'this field' : 'the highlighted fields'}.</strong><ul>{(Object.entries(fieldErrors) as Array<[keyof QuoteFormState, string]>).map(([field, message]) => <li key={field}><a href={`#${fieldIds[field]}`}>{fieldLabels[field]}: {message}</a></li>)}</ul></div>
+              </div>}
+              <div className="form-row">
+                <label htmlFor={fieldIds.firstName}>First name *<input id={fieldIds.firstName} required maxLength={100} autoComplete="given-name" value={quoteForm.firstName} aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? 'quote-first-name-error' : undefined} onBlur={() => validateFieldOnBlur('firstName')} onChange={(event) => updateField('firstName', event.target.value)} />{fieldErrors.firstName && <span className="field-error" id="quote-first-name-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.firstName}</span>}</label>
+                <label htmlFor={fieldIds.lastName}>Last name *<input id={fieldIds.lastName} required maxLength={100} autoComplete="family-name" value={quoteForm.lastName} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? 'quote-last-name-error' : undefined} onBlur={() => validateFieldOnBlur('lastName')} onChange={(event) => updateField('lastName', event.target.value)} />{fieldErrors.lastName && <span className="field-error" id="quote-last-name-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.lastName}</span>}</label>
+              </div>
+              <div className="form-row">
+                <label htmlFor={fieldIds.email}>Email *<input id={fieldIds.email} required maxLength={254} type="email" autoComplete="email" value={quoteForm.email} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'quote-email-error' : undefined} onBlur={() => validateFieldOnBlur('email')} onChange={(event) => updateField('email', event.target.value)} />{fieldErrors.email && <span className="field-error" id="quote-email-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.email}</span>}</label>
+                <label htmlFor={fieldIds.phone}>Phone *<input id={fieldIds.phone} required maxLength={40} type="tel" inputMode="tel" autoComplete="tel" placeholder="e.g. 021 083 83831" value={quoteForm.phone} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? 'quote-phone-error' : undefined} onBlur={() => validateFieldOnBlur('phone')} onChange={(event) => updateField('phone', event.target.value)} />{fieldErrors.phone && <span className="field-error" id="quote-phone-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.phone}</span>}</label>
+              </div>
+              <label htmlFor={fieldIds.location}>Property location *<input id={fieldIds.location} required maxLength={300} autoComplete="street-address" value={quoteForm.location} aria-invalid={Boolean(fieldErrors.location)} aria-describedby={fieldErrors.location ? 'quote-location-error' : undefined} onBlur={() => validateFieldOnBlur('location')} onChange={(event) => updateField('location', event.target.value)} />{fieldErrors.location && <span className="field-error" id="quote-location-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.location}</span>}</label>
+              <label htmlFor={fieldIds.service}>Service required *<select id={fieldIds.service} required value={quoteForm.service} aria-invalid={Boolean(fieldErrors.service)} aria-describedby={fieldErrors.service ? 'quote-service-error' : undefined} onBlur={() => validateFieldOnBlur('service')} onChange={(event) => updateField('service', event.target.value)}><option value="">Select a service</option>{services.map((service) => <option value={service.slug} key={service.slug}>{service.title}</option>)}</select>{fieldErrors.service && <span className="field-error" id="quote-service-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.service}</span>}</label>
+              <label htmlFor={fieldIds.message}>Project description *<textarea id={fieldIds.message} required maxLength={10000} rows={4} placeholder="Property type, surfaces to paint, preferred timing, and anything else we should know." value={quoteForm.message} aria-invalid={Boolean(fieldErrors.message)} aria-describedby={fieldErrors.message ? 'quote-message-error' : undefined} onBlur={() => validateFieldOnBlur('message')} onChange={(event) => updateField('message', event.target.value)} />{fieldErrors.message && <span className="field-error" id="quote-message-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.message}</span>}</label>
+              {!uploadContext && <label className={`upload-field ${submitting || photos.length >= maximumPhotoCount ? 'upload-field-disabled' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={handlePhotoDrop}>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple disabled={submitting || photos.length >= maximumPhotoCount} onChange={handlePhotoInput} />
+                <span className="upload-icon" aria-hidden="true"><ImagePlus size={17} /></span>
+                <strong>{photos.length >= maximumPhotoCount ? '4 photos selected' : 'Add project photos'}</strong>
+                <small>Drag and drop or choose up to 4 photos · 5 MB each</small>
+              </label>}
+              {photos.length > 0 && <div className="photo-preview-grid" aria-label="Selected project photos">
+                {photos.map((photo) => <article className={`photo-preview photo-${photo.status}`} key={photo.id}>
+                  <img src={photo.previewUrl} alt="" />
+                  <div className="photo-preview-shade" aria-hidden="true" />
+                  <button type="button" aria-label={`Remove ${photo.file.name}`} disabled={photo.status === 'uploading'} onClick={() => removePhoto(photo.id)}><X size={15} /></button>
+                  <div className="photo-meta"><strong title={photo.file.name}>{photo.file.name}</strong><span>{photo.status === 'uploading' ? 'Uploading…' : photo.status === 'uploaded' ? <><Check size={13} /> Uploaded</> : photo.status === 'failed' ? 'Upload failed' : `${(photo.file.size / 1024 / 1024).toFixed(1)} MB`}</span></div>
+                </article>)}
+              </div>}
+              {photoError && <div className="photo-error" role="alert"><span>{photoError}</span>{uploadContext && <button type="button" onClick={retryPhotoUploads} disabled={submitting}><RotateCcw size={14} />{submitting ? 'Retrying…' : 'Retry photo uploads'}</button>}</div>}
+              <div className="form-submit"><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Submitting…' : 'Submit Quote Request →'}</button><p>Your details will only be used to respond to this request.</p></div>
+              {submissionReference && <div className="form-success" role="status"><strong>Thanks—your request has been received.</strong><span>Reference: {submissionReference}. Our team will contact you shortly.</span></div>}
+              {submissionError && <div className="form-error" role="alert"><strong>Unable to submit your request.</strong><span>{submissionError}</span></div>}
             </form>
           </div>
         </section>

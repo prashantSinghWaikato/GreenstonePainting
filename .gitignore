@@ -37,3 +37,7 @@ yarn-error.log*
 pnpm-debug.log*
 *.tmp
 *.temp
+
+# Customer-uploaded files (local development only)
+data/uploads/
+backend/data/uploads/
