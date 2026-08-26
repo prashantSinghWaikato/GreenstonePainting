@@ -3,6 +3,8 @@ package org.greenstone.backend;
 import org.greenstone.backend.persistence.entity.EnquiryStatus;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.EnquiryAttachmentRepository;
+import org.greenstone.backend.notification.EnquiryNotifier;
+import org.greenstone.backend.persistence.entity.Enquiry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,12 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,6 +57,9 @@ class EnquiryControllerTests {
 
     @Autowired
     private EnquiryAttachmentRepository attachmentRepository;
+
+    @MockitoBean
+    private EnquiryNotifier enquiryNotifier;
 
     @Test
     void createsAValidatedQuoteEnquiry() throws Exception {
@@ -213,6 +225,42 @@ class EnquiryControllerTests {
                         .header("X-Upload-Token", uploadToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Each photo must be 5 MB or smaller."));
+    }
+
+    @Test
+    void completesAnEnquiryOnceAndAllowsSecurePhotoDownload() throws Exception {
+        var created = createQuoteEnquiry();
+        var enquiryId = jsonString(created, "id");
+        var uploadToken = jsonString(created, "uploadToken");
+        var photo = new MockMultipartFile(
+                "file", "project.jpg", MediaType.IMAGE_JPEG_VALUE,
+                new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff, 1}
+        );
+        var uploaded = mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
+                        .file(photo)
+                        .header("X-Upload-Token", uploadToken))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        var attachmentId = jsonString(uploaded, "id");
+
+        mockMvc.perform(post("/api/enquiries/{enquiryId}/complete", enquiryId)
+                        .header("X-Upload-Token", uploadToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notificationSent").value(true))
+                .andExpect(jsonPath("$.completedAt").isNotEmpty());
+        mockMvc.perform(post("/api/enquiries/{enquiryId}/complete", enquiryId)
+                        .header("X-Upload-Token", uploadToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notificationSent").value(true));
+
+        var reviewToken = ArgumentCaptor.forClass(String.class);
+        verify(enquiryNotifier, times(1)).sendNewQuoteNotification(any(Enquiry.class), anyList(), reviewToken.capture());
+
+        mockMvc.perform(get("/api/enquiries/{enquiryId}/attachments/{attachmentId}", enquiryId, attachmentId)
+                        .param("token", reviewToken.getValue()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", MediaType.IMAGE_JPEG_VALUE))
+                .andExpect(header().string("Cache-Control", "private, no-store"));
     }
 
     private String createQuoteEnquiry() throws Exception {

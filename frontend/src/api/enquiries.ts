@@ -24,6 +24,12 @@ export type EnquiryAttachmentResponse = {
   createdAt: string
 }
 
+export type EnquiryCompletionResponse = {
+  id: string
+  completedAt: string
+  notificationSent: boolean
+}
+
 type ApiError = {
   message?: string
   fieldErrors?: Record<string, string>
@@ -75,6 +81,20 @@ export async function uploadEnquiryPhoto(enquiryId: string, uploadToken: string,
   }
 
   return response.json() as Promise<EnquiryAttachmentResponse>
+}
+
+export async function completeEnquiry(enquiryId: string, uploadToken: string): Promise<EnquiryCompletionResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/enquiries/${enquiryId}/complete`, {
+    method: 'POST',
+    headers: { 'X-Upload-Token': uploadToken },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({})) as ApiError
+    throw new Error(error.message ?? 'Your request was saved, but we could not notify our team yet.')
+  }
+
+  return response.json() as Promise<EnquiryCompletionResponse>
 }
 
 function withInferredContentType(file: File): File {

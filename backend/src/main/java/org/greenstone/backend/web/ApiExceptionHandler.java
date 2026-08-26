@@ -59,4 +59,14 @@ public class ApiExceptionHandler {
                 java.util.Map.of()
         ));
     }
+
+    @ExceptionHandler(NotificationDeliveryException.class)
+    public ResponseEntity<ApiError> handleNotificationDelivery(NotificationDeliveryException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                exception.getMessage(),
+                java.util.Map.of()
+        ));
+    }
 }

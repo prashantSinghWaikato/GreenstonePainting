@@ -4,6 +4,8 @@ import org.greenstone.backend.web.UploadValidationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -46,6 +48,15 @@ public class LocalFileStorageService implements FileStorageService {
         } catch (IOException exception) {
             throw new IllegalStateException("The photo could not be stored.", exception);
         }
+    }
+
+    @Override
+    public Resource load(String objectKey) {
+        var path = resolveObjectKey(objectKey);
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalStateException("The requested photo is unavailable.");
+        }
+        return new FileSystemResource(path);
     }
 
     @Override

@@ -103,7 +103,7 @@ export const serviceAreas = [
 ]
 
 export const articles = [
-  { date: '19 Sep 2025', title: 'How Painters Prepare Your Home for a Smooth Paint Job', topic: 'Preparation' },
-  { date: '24 Aug 2025', title: 'A Guide to Compliance-Friendly Paint Options', topic: 'Materials' },
-  { date: '14 Aug 2025', title: 'Wood Staining Benefits You Need to Know', topic: 'Care guide' },
+  { date: '19 Sep 2025', title: 'How Painters Prepare Your Home for a Smooth Paint Job', topic: 'Preparation', path: '/how-painters-prepare-your-home-for-a-smooth-paint-job/' },
+  { date: '24 Aug 2025', title: 'A Guide to Compliance-Friendly Paint Options', topic: 'Materials', path: '/822-2/' },
+  { date: '14 Aug 2025', title: 'Wood Staining Benefits You Need to Know', topic: 'Care guide', path: '/wood-staining-benefits-you-need-to-take-advantage-of/' },
 ]

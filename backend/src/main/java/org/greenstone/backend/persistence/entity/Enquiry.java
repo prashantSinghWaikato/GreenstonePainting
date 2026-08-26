@@ -69,6 +69,18 @@ public class Enquiry extends BaseEntity {
     @Column(name = "upload_token_expires_at")
     private OffsetDateTime uploadTokenExpiresAt;
 
+    @Column(name = "completed_at")
+    private OffsetDateTime completedAt;
+
+    @Column(name = "notification_sent_at")
+    private OffsetDateTime notificationSentAt;
+
+    @Column(name = "review_token_hash", length = 64)
+    private String reviewTokenHash;
+
+    @Column(name = "review_token_expires_at")
+    private OffsetDateTime reviewTokenExpiresAt;
+
     protected Enquiry() {
     }
 
@@ -112,4 +124,12 @@ public class Enquiry extends BaseEntity {
     public void setUploadTokenHash(String uploadTokenHash) { this.uploadTokenHash = uploadTokenHash; }
     public OffsetDateTime getUploadTokenExpiresAt() { return uploadTokenExpiresAt; }
     public void setUploadTokenExpiresAt(OffsetDateTime uploadTokenExpiresAt) { this.uploadTokenExpiresAt = uploadTokenExpiresAt; }
+    public OffsetDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
+    public OffsetDateTime getNotificationSentAt() { return notificationSentAt; }
+    public void setNotificationSentAt(OffsetDateTime notificationSentAt) { this.notificationSentAt = notificationSentAt; }
+    public String getReviewTokenHash() { return reviewTokenHash; }
+    public void setReviewTokenHash(String reviewTokenHash) { this.reviewTokenHash = reviewTokenHash; }
+    public OffsetDateTime getReviewTokenExpiresAt() { return reviewTokenExpiresAt; }
+    public void setReviewTokenExpiresAt(OffsetDateTime reviewTokenExpiresAt) { this.reviewTokenExpiresAt = reviewTokenExpiresAt; }
 }

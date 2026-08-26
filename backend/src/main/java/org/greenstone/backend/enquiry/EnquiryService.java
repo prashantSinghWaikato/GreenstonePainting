@@ -7,6 +7,7 @@ import org.greenstone.backend.persistence.entity.EnquiryType;
 import org.greenstone.backend.persistence.repository.EnquiryAttachmentRepository;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.ServiceOfferingRepository;
+import org.greenstone.backend.notification.EnquiryNotifier;
 import org.greenstone.backend.storage.FileStorageService;
 import org.greenstone.backend.web.ResourceNotFoundException;
 import org.greenstone.backend.web.UploadValidationException;
@@ -29,17 +30,20 @@ public class EnquiryService {
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final EnquiryAttachmentRepository attachmentRepository;
     private final FileStorageService fileStorageService;
+    private final EnquiryNotifier enquiryNotifier;
 
     public EnquiryService(
             EnquiryRepository enquiryRepository,
             ServiceOfferingRepository serviceOfferingRepository,
             EnquiryAttachmentRepository attachmentRepository,
-            FileStorageService fileStorageService
+            FileStorageService fileStorageService,
+            EnquiryNotifier enquiryNotifier
     ) {
         this.enquiryRepository = enquiryRepository;
         this.serviceOfferingRepository = serviceOfferingRepository;
         this.attachmentRepository = attachmentRepository;
         this.fileStorageService = fileStorageService;
+        this.enquiryNotifier = enquiryNotifier;
     }
 
     @Transactional
@@ -103,6 +107,47 @@ public class EnquiryService {
         }
     }
 
+    @Transactional
+    public EnquiryCompletionResponse completeQuoteEnquiry(UUID enquiryId, String uploadToken) {
+        var enquiry = enquiryRepository.findByIdForAttachmentUpload(enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Quote request was not found."));
+        if (!isValidUploadToken(enquiry, uploadToken)) {
+            throw new ResourceNotFoundException("Quote completion access is invalid or has expired.");
+        }
+        if (enquiry.getNotificationSentAt() != null) {
+            return new EnquiryCompletionResponse(enquiry.getId(), enquiry.getCompletedAt(), true);
+        }
+
+        var now = OffsetDateTime.now(ZoneOffset.UTC);
+        var reviewToken = UUID.randomUUID() + "." + UUID.randomUUID();
+        enquiry.setCompletedAt(now);
+        enquiry.setReviewTokenHash(hashUploadToken(reviewToken));
+        enquiry.setReviewTokenExpiresAt(now.plusDays(30));
+
+        var attachments = attachmentRepository.findAllByEnquiryId(enquiryId);
+        enquiryNotifier.sendNewQuoteNotification(enquiry, attachments, reviewToken);
+        enquiry.setNotificationSentAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        return new EnquiryCompletionResponse(enquiry.getId(), enquiry.getCompletedAt(), true);
+    }
+
+    @Transactional(readOnly = true)
+    public AttachmentDownload downloadAttachment(UUID enquiryId, UUID attachmentId, String reviewToken) {
+        var enquiry = enquiryRepository.findById(enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project photo was not found."));
+        if (!isValidReviewToken(enquiry, reviewToken)) {
+            throw new ResourceNotFoundException("This photo link is invalid or has expired.");
+        }
+        var attachment = attachmentRepository.findByIdAndEnquiryId(attachmentId, enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project photo was not found."));
+        return new AttachmentDownload(
+                fileStorageService.load(attachment.getObjectKey()),
+                attachment.getOriginalFilename(),
+                attachment.getContentType(),
+                attachment.getSizeBytes()
+        );
+    }
+
     private boolean isValidUploadToken(Enquiry enquiry, String uploadToken) {
         if (uploadToken == null || uploadToken.isBlank() || enquiry.getUploadTokenHash() == null
                 || enquiry.getUploadTokenExpiresAt() == null
@@ -112,6 +157,18 @@ public class EnquiryService {
         return MessageDigest.isEqual(
                 enquiry.getUploadTokenHash().getBytes(StandardCharsets.US_ASCII),
                 hashUploadToken(uploadToken).getBytes(StandardCharsets.US_ASCII)
+        );
+    }
+
+    private boolean isValidReviewToken(Enquiry enquiry, String reviewToken) {
+        if (reviewToken == null || reviewToken.isBlank() || enquiry.getReviewTokenHash() == null
+                || enquiry.getReviewTokenExpiresAt() == null
+                || enquiry.getReviewTokenExpiresAt().isBefore(OffsetDateTime.now(ZoneOffset.UTC))) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                enquiry.getReviewTokenHash().getBytes(StandardCharsets.US_ASCII),
+                hashUploadToken(reviewToken).getBytes(StandardCharsets.US_ASCII)
         );
     }
 
