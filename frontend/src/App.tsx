@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent, FormEvent } from 'react'
 import { AlertCircle, Building2, Check, Fence, Hammer, House, ImagePlus, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone, RotateCcw, X } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
 import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
 import { articles, heroSlides, projects, serviceAreas, services } from './data/site'
+import ColourStudio from './ColourStudio'
 import './App.css'
 
 type QuoteFormState = {
@@ -116,6 +117,7 @@ function App() {
   const [fieldErrors, setFieldErrors] = useState<QuoteFormErrors>({})
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [privacyError, setPrivacyError] = useState('')
+  const [colourStudioOpen, setColourStudioOpen] = useState(false)
   const photosRef = useRef<SelectedPhoto[]>([])
   const quoteFormRef = useRef<HTMLFormElement>(null)
 
@@ -129,6 +131,29 @@ function App() {
   useEffect(() => {
     photosRef.current = photos
   }, [photos])
+
+  useEffect(() => {
+    const showQuoteForm = (serviceSlug?: string) => {
+      if (serviceSlug && services.some((service) => service.slug === serviceSlug)) {
+        setQuoteForm((current) => ({ ...current, service: serviceSlug }))
+        setFieldErrors((current) => {
+          if (!current.service) return current
+          const next = { ...current }
+          delete next.service
+          return next
+        })
+      }
+      window.requestAnimationFrame(() => document.getElementById('quote')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
+
+    const handleAssistantQuote = (event: Event) => showQuoteForm((event as CustomEvent<{ serviceSlug?: string }>).detail?.serviceSlug)
+    window.addEventListener('greenstone:open-quote', handleAssistantQuote)
+
+    const serviceSlug = new URLSearchParams(window.location.search).get('service') ?? undefined
+    if (window.location.hash === '#quote') showQuoteForm(serviceSlug)
+
+    return () => window.removeEventListener('greenstone:open-quote', handleAssistantQuote)
+  }, [])
 
   useEffect(() => () => photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl)), [])
 
@@ -344,6 +369,7 @@ function App() {
   }
 
   const closeMenu = () => setMenuOpen(false)
+  const closeColourStudio = useCallback(() => setColourStudioOpen(false), [])
   const project = projects[activeProject]
 
   return (
@@ -405,12 +431,12 @@ function App() {
                 <p><span aria-hidden="true">✓</span><strong>Local Waikato team</strong></p>
               </div>
             </div>
-            <aside className="hero-paint-card" aria-label="Colour consultation available">
+            <button className="hero-paint-card" type="button" onClick={() => setColourStudioOpen(true)} aria-haspopup="dialog">
               <div className="paint-card-heading"><span><Palette size={20} strokeWidth={1.8} /></span><p>Colour consultation</p></div>
               <strong>A finish made for your space.</strong>
               <div className="paint-swatches" aria-hidden="true"><span /><span /><span /><span /><span /></div>
-              <small><Paintbrush size={14} strokeWidth={1.8} /> Samples, sheen and coating advice</small>
-            </aside>
+              <small><Paintbrush size={14} strokeWidth={1.8} /> Open the interactive colour preview</small>
+            </button>
             <div className="hero-controls" aria-label="Featured project slideshow">
               <div className="hero-control-buttons">
                 {heroSlides.map((slide, index) => <button className={index === activeHero ? 'is-active' : ''} type="button" onClick={() => setActiveHero(index)} aria-label={`Show ${slide.label}`} key={slide.image} />)}
@@ -530,7 +556,7 @@ function App() {
               {photoError && <div className="photo-error" role="alert"><span>{photoError}</span>{uploadContext && <button type="button" onClick={retryPhotoUploads} disabled={submitting}><RotateCcw size={14} />{submitting ? 'Retrying…' : 'Retry photo uploads'}</button>}</div>}
               {submissionReference && <div className="form-success" role="status"><strong>Thanks—your request has been received.</strong><span>Reference: {submissionReference}. {notificationSent ? 'Our team has been notified and will contact you shortly.' : 'Your project details are safely recorded.'}</span></div>}
               {completionError && <div className="completion-error" role="alert"><div><strong>Your quote is safely saved.</strong><span>{completionError}</span></div><button type="button" onClick={retryCompletion} disabled={submitting}><RotateCcw size={14} />{submitting ? 'Retrying…' : 'Retry confirmation'}</button></div>}
-              {!submissionReference && <div className="form-submit"><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? 'Submitting…' : 'Submit Quote Request →'}</button><p>We use your details to assess and respond to this project request.</p></div>}
+              {!submissionReference && <div className="form-submit"><button className="button button-primary" type="submit" disabled={submitting || !privacyAccepted} aria-describedby="quote-submit-help">{submitting ? 'Submitting…' : 'Submit Quote Request →'}</button><p id="quote-submit-help">{privacyAccepted ? 'We use your details to assess and respond to this project request.' : 'Read and accept the Privacy Notice to enable submission.'}</p></div>}
               {submissionReference && notificationSent && photos.length === 0 && <div className="form-submit"><button className="button button-dark" type="button" onClick={startAnotherQuote}>Start another request →</button></div>}
               {submissionError && <div className="form-error" role="alert"><strong>Unable to submit your request.</strong><span>{submissionError}</span></div>}
             </form>
@@ -587,6 +613,7 @@ function App() {
         </div>
         <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting Limited</span><a href="#privacy">Privacy Notice</a></div>
       </footer>
+      <ColourStudio open={colourStudioOpen} onClose={closeColourStudio} />
     </div>
   )
 }

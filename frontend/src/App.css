@@ -56,7 +56,8 @@
 .hero-trust p { display: flex; align-items: center; gap: 8px; margin: 0; color: rgba(255,255,255,.7); font-size: .76rem; }
 .hero-trust p span { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid rgba(59,215,160,.6); border-radius: 50%; color: #3bd7a0; font-size: .65rem; }
 .hero-trust strong { color: #fff; font-weight: 500; }
-.hero-paint-card { position: absolute; right: 0; top: 47%; display: flex; width: 252px; padding: 22px; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; color: #fff; background: rgba(7,26,20,.72); box-shadow: 0 24px 60px rgba(0,0,0,.22); flex-direction: column; backdrop-filter: blur(14px); transform: translateY(-50%); }
+.hero-paint-card { position: absolute; right: 0; top: 47%; display: flex; width: 252px; padding: 22px; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; color: #fff; background: rgba(7,26,20,.72); box-shadow: 0 24px 60px rgba(0,0,0,.22); flex-direction: column; cursor: pointer; font: inherit; text-align: left; backdrop-filter: blur(14px); transform: translateY(-50%); transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease; }
+.hero-paint-card:hover, .hero-paint-card:focus-visible { border-color: rgba(75,221,167,.72); background: rgba(9,42,32,.88); box-shadow: 0 28px 68px rgba(0,0,0,.3), 0 0 0 3px rgba(75,221,167,.16); outline: none; }
 .paint-card-heading { display: flex; align-items: center; gap: 10px; }
 .paint-card-heading > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px; color: #071a14; background: #4bdda7; }
 .paint-card-heading p { margin: 0; color: rgba(255,255,255,.68); font-size: .65rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }

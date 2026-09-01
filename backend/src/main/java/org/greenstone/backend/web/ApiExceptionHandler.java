@@ -2,6 +2,7 @@ package org.greenstone.backend.web;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,6 +14,16 @@ import java.util.LinkedHashMap;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiError> handleAuthentication() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.UNAUTHORIZED.value(),
+                "Email or password is incorrect.",
+                java.util.Map.of()
+        ));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception) {

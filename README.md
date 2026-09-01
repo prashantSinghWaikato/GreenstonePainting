@@ -14,8 +14,10 @@ Start the Spring Boot API:
 
 ```bash
 cd backend
-./gradlew bootRun
+ADMIN_EMAIL=office@example.com ADMIN_PASSWORD='use-at-least-12-characters' ./gradlew bootRun
 ```
+
+The admin account is created on the first backend start and can be used at [http://localhost:5173/admin/](http://localhost:5173/admin/). The password is stored as a BCrypt hash and is never written to source control. If the account already exists, changing the environment variable does not silently reset its password.
 
 Start the React frontend in another terminal:
 
