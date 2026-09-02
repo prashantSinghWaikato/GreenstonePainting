@@ -19,6 +19,7 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -33,8 +34,9 @@ public class SecurityConfig {
         return email -> repository.findByEmailIgnoreCase(email)
                 .map(admin -> User.withUsername(admin.getEmail())
                         .password(admin.getPasswordHash())
-                        .roles(admin.getRole())
+                        .authorities("ROLE_ADMIN", "ROLE_" + admin.getRole().name())
                         .disabled(!admin.isEnabled())
+                        .accountLocked(admin.isLocked())
                         .build())
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException(
                         "Admin account was not found."
@@ -59,7 +61,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            SecurityContextRepository securityContextRepository
+            SecurityContextRepository securityContextRepository,
+            AdminAccountStatusFilter accountStatusFilter
     ) throws Exception {
         var csrfRepository = new HttpSessionCsrfTokenRepository();
 
@@ -74,7 +77,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/projects/**").permitAll()
                         .requestMatchers("/api/enquiries/**", "/error").permitAll()
+                        .requestMatchers("/api/admin/staff/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.PATCH, "/api/admin/content/projects/*/publication").hasRole("OWNER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions
@@ -88,6 +94,7 @@ public class SecurityConfig {
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             response.getWriter().write("{\"message\":\"This request could not be authorised. Refresh and try again.\"}");
                         }))
+                .addFilterAfter(accountStatusFilter, SecurityContextHolderFilter.class)
                 .logout(logout -> logout
                         .logoutUrl("/api/admin/auth/logout")
                         .invalidateHttpSession(true)

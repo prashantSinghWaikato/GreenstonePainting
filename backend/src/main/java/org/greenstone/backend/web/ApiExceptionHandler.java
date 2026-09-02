@@ -51,6 +51,46 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    @ExceptionHandler(WorkflowConflictException.class)
+    public ResponseEntity<ApiError> handleWorkflowConflict(WorkflowConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.CONFLICT.value(),
+                exception.getMessage(),
+                java.util.Map.of()
+        ));
+    }
+
+    @ExceptionHandler(StaffAccountConflictException.class)
+    public ResponseEntity<ApiError> handleStaffAccountConflict(StaffAccountConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.CONFLICT.value(),
+                exception.getMessage(),
+                java.util.Map.of()
+        ));
+    }
+
+    @ExceptionHandler(AccountSecurityException.class)
+    public ResponseEntity<ApiError> handleAccountSecurity(AccountSecurityException exception) {
+        return ResponseEntity.badRequest().body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.BAD_REQUEST.value(),
+                exception.getMessage(),
+                java.util.Map.of()
+        ));
+    }
+
+    @ExceptionHandler(AdminAccountLockedException.class)
+    public ResponseEntity<ApiError> handleAccountLocked(AdminAccountLockedException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                exception.getMessage(),
+                java.util.Map.of()
+        ));
+    }
+
     @ExceptionHandler(UploadValidationException.class)
     public ResponseEntity<ApiError> handleUploadValidation(UploadValidationException exception) {
         return ResponseEntity.badRequest().body(new ApiError(

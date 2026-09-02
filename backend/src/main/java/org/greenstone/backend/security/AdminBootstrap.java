@@ -45,8 +45,10 @@ public class AdminBootstrap implements ApplicationRunner {
         if (email.isBlank() || password.isBlank()) {
             throw new IllegalStateException("ADMIN_EMAIL and ADMIN_PASSWORD must be supplied together.");
         }
-        if (password.length() < 12) {
-            throw new IllegalStateException("ADMIN_PASSWORD must contain at least 12 characters.");
+        try {
+            PasswordPolicy.validate(password);
+        } catch (org.greenstone.backend.web.AccountSecurityException exception) {
+            throw new IllegalStateException("ADMIN_PASSWORD " + exception.getMessage(), exception);
         }
         if (displayName.isBlank()) {
             throw new IllegalStateException("ADMIN_DISPLAY_NAME cannot be blank.");

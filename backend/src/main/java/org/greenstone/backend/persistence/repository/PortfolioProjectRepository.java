@@ -10,6 +10,8 @@ import java.util.UUID;
 
 public interface PortfolioProjectRepository extends JpaRepository<PortfolioProject, UUID> {
     Optional<PortfolioProject> findBySlug(String slug);
+    List<PortfolioProject> findAllByOrderByUpdatedAtDesc();
     List<PortfolioProject> findAllByStatusOrderByCompletedOnDesc(PublicationStatus status);
+    List<PortfolioProject> findAllByStatusOrderByFeaturedDescCompletedOnDesc(PublicationStatus status);
     List<PortfolioProject> findAllByFeaturedTrueAndStatusOrderByCompletedOnDesc(PublicationStatus status);
 }

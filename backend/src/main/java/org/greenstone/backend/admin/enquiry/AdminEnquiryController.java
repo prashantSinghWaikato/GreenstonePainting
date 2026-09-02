@@ -10,7 +10,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -42,6 +46,15 @@ public class AdminEnquiryController {
     @GetMapping("/{enquiryId}")
     public AdminEnquiryDetailResponse find(@PathVariable UUID enquiryId) {
         return adminEnquiryService.find(enquiryId);
+    }
+
+    @PatchMapping("/{enquiryId}/workflow")
+    public AdminEnquiryDetailResponse updateWorkflow(
+            @PathVariable UUID enquiryId,
+            @Valid @RequestBody UpdateEnquiryWorkflowRequest request,
+            Authentication authentication
+    ) {
+        return adminEnquiryService.updateWorkflow(enquiryId, request, authentication.getName());
     }
 
     @GetMapping("/{enquiryId}/attachments/{attachmentId}")

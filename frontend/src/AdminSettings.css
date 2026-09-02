@@ -1,0 +1,359 @@
+.admin-settings {
+  max-width: 92rem;
+  margin: 0 auto;
+}
+
+.settings-page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.settings-page-heading h1 {
+  margin: 0.65rem 0 0.65rem;
+  font: 600 clamp(2.5rem, 5vw, 5.4rem) / 0.96 'Manrope', sans-serif;
+  letter-spacing: -0.06em;
+}
+
+.settings-page-heading p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.settings-role-badge,
+.settings-account-status {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.settings-role-badge {
+  flex: 0 0 auto;
+  min-height: 3.25rem;
+  padding: 0 1.1rem;
+  color: #f4eee7;
+  background: var(--green);
+  font-size: 0.7rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.72fr) minmax(30rem, 1.28fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.settings-card {
+  min-width: 0;
+  padding: clamp(1.35rem, 2.5vw, 2.2rem);
+  border: 1px solid rgba(16, 27, 42, 0.15);
+  background: #e8e1d7;
+}
+
+.settings-card > header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid rgba(16, 27, 42, 0.13);
+}
+
+.settings-card header h2 {
+  margin: 0.35rem 0 0.35rem;
+  font: 600 1.42rem 'Manrope', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.settings-card header p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.settings-icon {
+  display: grid;
+  flex: 0 0 2.8rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  color: #fff;
+  background: var(--green);
+  place-items: center;
+}
+
+.settings-icon svg { width: 1.25rem; }
+
+.settings-password-card {
+  grid-row: span 2;
+  position: sticky;
+  top: 1.1rem;
+}
+
+.settings-card form {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1.4rem;
+}
+
+.settings-card form label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.settings-card form label > span {
+  font-size: 0.79rem;
+  font-weight: 800;
+}
+
+.settings-card input,
+.settings-card select {
+  width: 100%;
+  min-height: 3.35rem;
+  padding: 0 0.9rem;
+  color: var(--ink);
+  border: 1px solid rgba(16, 27, 42, 0.25);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.48);
+  font: inherit;
+}
+
+.settings-card input:focus,
+.settings-card select:focus {
+  border-color: var(--copper);
+  box-shadow: 0 0 0 4px rgba(230, 111, 71, 0.13);
+  outline: none;
+}
+
+.settings-card label small {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.settings-card form > button,
+.settings-enable,
+.settings-disable {
+  display: inline-flex;
+  min-height: 3.35rem;
+  padding: 0 1rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.settings-card form > button {
+  margin-top: 0.25rem;
+  color: #fff;
+  background: var(--green);
+}
+
+.settings-card form > button:hover:not(:disabled),
+.settings-enable:hover:not(:disabled) { background: #17364e; }
+.settings-card button:disabled { cursor: not-allowed; opacity: 0.48; }
+.settings-card button svg { width: 1.05rem; }
+
+.settings-password-rules {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  padding: 0.9rem;
+  background: rgba(185, 200, 206, 0.46);
+}
+
+.settings-password-rules span {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.settings-password-rules svg { width: 0.85rem; opacity: 0.35; }
+.settings-password-rules span.valid { color: #196044; font-weight: 700; }
+.settings-password-rules span.valid svg { opacity: 1; }
+
+.settings-success,
+.settings-error {
+  display: flex;
+  padding: 0.8rem 0.9rem;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.settings-success { color: #174d38; border-left: 3px solid #2f8060; background: #d4e7dc; }
+.settings-error { color: #7d2818; border-left: 3px solid #c8502d; background: #f6d9cb; }
+.settings-success svg,
+.settings-error svg { flex: 0 0 auto; width: 1rem; }
+
+.settings-create-card { grid-column: 2; }
+.settings-create-card form { grid-template-columns: 1fr 1fr; }
+.settings-create-card form label:nth-of-type(3),
+.settings-create-card form label:nth-of-type(4),
+.settings-create-card form > button,
+.settings-create-card .settings-success,
+.settings-create-card .settings-error { grid-column: 1 / -1; }
+
+.settings-team-card,
+.settings-audit-card { grid-column: 2; }
+
+.settings-team-list { display: grid; }
+
+.settings-team-list article {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(11rem, 1fr) minmax(10rem, 0.75fr) auto auto;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.15rem 0;
+  align-items: center;
+  border-bottom: 1px solid rgba(16, 27, 42, 0.12);
+}
+
+.settings-team-list article:last-child { border-bottom: 0; padding-bottom: 0; }
+.settings-team-list article.disabled { opacity: 0.68; }
+
+.settings-staff-avatar {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  color: #fff;
+  background: #c8502d;
+  font-weight: 800;
+  place-items: center;
+}
+
+.settings-staff-identity,
+.settings-staff-login { display: grid; min-width: 0; gap: 0.2rem; }
+.settings-staff-identity strong,
+.settings-staff-identity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-staff-identity span { color: var(--ink-soft); font-size: 0.8rem; }
+.settings-staff-identity small { color: #9f3f25; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; }
+.settings-staff-login span { color: var(--ink-soft); font-size: 0.67rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.settings-staff-login strong { font-size: 0.76rem; }
+.settings-staff-login small { color: #9f3f25; font-size: 0.68rem; }
+
+.settings-account-status {
+  min-height: 1.9rem;
+  padding: 0 0.65rem;
+  font-size: 0.62rem;
+}
+.settings-account-status.active { color: #174d38; background: #d4e7dc; }
+.settings-account-status.inactive { color: #6b5546; background: #ddd0bf; }
+
+.settings-enable,
+.settings-disable { min-height: 2.55rem; font-size: 0.72rem; }
+.settings-enable { color: #fff; background: var(--green); }
+.settings-disable { color: #8c321e; border: 1px solid rgba(157, 57, 32, 0.32); background: transparent; }
+.settings-disable:hover:not(:disabled) { background: #f3d6ca; }
+
+.settings-audit-list { display: grid; }
+.settings-audit-list article {
+  display: flex;
+  padding: 1rem 0;
+  gap: 0.8rem;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(16, 27, 42, 0.1);
+}
+.settings-audit-list article:last-child { border-bottom: 0; padding-bottom: 0; }
+.settings-audit-list article > div { display: grid; flex: 0 0 2rem; width: 2rem; height: 2rem; color: #c8502d; background: #f3d6ca; place-items: center; }
+.settings-audit-list svg { width: 0.95rem; }
+.settings-audit-list p { display: grid; gap: 0.2rem; margin: 0; line-height: 1.4; }
+.settings-audit-list strong { font-size: 0.82rem; }
+.settings-audit-list span { color: var(--ink-soft); font-size: 0.7rem; }
+.settings-empty-audit { margin: 1.2rem 0 0; color: var(--ink-soft); }
+
+.settings-loading {
+  grid-column: 2;
+  display: flex;
+  min-height: 12rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border: 1px solid rgba(16, 27, 42, 0.15);
+  background: #e8e1d7;
+}
+
+.settings-confirm-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  padding: 1rem;
+  background: rgba(4, 17, 29, 0.75);
+  place-items: center;
+}
+
+.settings-confirm-overlay section {
+  width: min(100%, 31rem);
+  padding: 2rem;
+  color: var(--ink);
+  border-top: 5px solid var(--copper);
+  background: #e8e1d7;
+  box-shadow: 0 2rem 5rem rgba(0, 0, 0, 0.28);
+}
+.settings-confirm-overlay section > svg { width: 2rem; height: 2rem; margin-bottom: 1rem; color: #c8502d; }
+.settings-confirm-overlay h2 { margin: 0.55rem 0; font: 600 1.65rem 'Manrope', sans-serif; }
+.settings-confirm-overlay p { color: var(--ink-soft); line-height: 1.65; }
+.settings-confirm-overlay section > div { display: flex; margin-top: 1.5rem; justify-content: flex-end; gap: 0.7rem; }
+.settings-confirm-overlay button { min-height: 3rem; padding: 0 1rem; cursor: pointer; font-weight: 800; }
+.settings-confirm-overlay .cancel { color: var(--ink); border: 1px solid rgba(16, 27, 42, 0.22); background: transparent; }
+.settings-confirm-overlay .confirm { color: #fff; border: 1px solid #9f3f25; background: #9f3f25; }
+
+.settings-staff-notice {
+  display: flex;
+  max-width: 58rem;
+  margin-top: 1rem;
+  padding: 1.4rem;
+  gap: 1rem;
+  color: #f4eee7;
+  background: var(--green);
+}
+.settings-staff-notice > svg { flex: 0 0 auto; width: 1.5rem; color: #f0ad8f; }
+.settings-staff-notice h2 { margin: 0 0 0.35rem; font: 600 1.1rem 'Manrope', sans-serif; }
+.settings-staff-notice p { margin: 0; color: rgba(244, 238, 231, 0.72); line-height: 1.55; }
+
+@media (max-width: 1250px) {
+  .settings-grid { grid-template-columns: 1fr; }
+  .settings-password-card { position: static; grid-row: auto; }
+  .settings-create-card,
+  .settings-team-card,
+  .settings-audit-card,
+  .settings-loading { grid-column: 1; }
+}
+
+@media (max-width: 800px) {
+  .settings-team-list article { grid-template-columns: 2.6rem minmax(0, 1fr) auto; }
+  .settings-staff-login { grid-column: 2; }
+  .settings-account-status { grid-column: 3; grid-row: 1; }
+  .settings-enable,
+  .settings-disable { grid-column: 3; grid-row: 2; }
+}
+
+@media (max-width: 620px) {
+  .settings-page-heading { align-items: flex-start; flex-direction: column; }
+  .settings-page-heading h1 { font-size: 2.7rem; }
+  .settings-create-card form { grid-template-columns: 1fr; }
+  .settings-create-card form label,
+  .settings-create-card form > button,
+  .settings-create-card .settings-success,
+  .settings-create-card .settings-error { grid-column: 1; }
+  .settings-password-rules { grid-template-columns: 1fr; }
+  .settings-team-list article { grid-template-columns: 2.6rem minmax(0, 1fr); }
+  .settings-staff-login,
+  .settings-account-status,
+  .settings-enable,
+  .settings-disable { grid-column: 2; grid-row: auto; justify-self: start; }
+  .settings-enable,
+  .settings-disable { width: 100%; }
+  .settings-confirm-overlay section > div { align-items: stretch; flex-direction: column; }
+}

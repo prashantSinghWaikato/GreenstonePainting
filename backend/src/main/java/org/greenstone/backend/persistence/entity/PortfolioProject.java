@@ -8,12 +8,18 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "portfolio_projects")
 public class PortfolioProject extends BaseEntity {
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @Column(nullable = false, unique = true, length = 120)
     private String slug;
@@ -39,6 +45,9 @@ public class PortfolioProject extends BaseEntity {
 
     @Column(nullable = false)
     private boolean featured;
+
+    @Column(name = "published_at")
+    private OffsetDateTime publishedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_id")
@@ -70,6 +79,9 @@ public class PortfolioProject extends BaseEntity {
     public void setStatus(PublicationStatus status) { this.status = status; }
     public boolean isFeatured() { return featured; }
     public void setFeatured(boolean featured) { this.featured = featured; }
+    public long getVersion() { return version; }
+    public OffsetDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(OffsetDateTime publishedAt) { this.publishedAt = publishedAt; }
     public ServiceOffering getService() { return service; }
     public void setService(ServiceOffering service) { this.service = service; }
 }

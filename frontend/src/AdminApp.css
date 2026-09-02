@@ -41,9 +41,28 @@
   width: fit-content;
 }
 
+.admin-sidebar-logo {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.admin-sidebar-logo:focus-visible {
+  outline: 2px solid #f0ad8f;
+  outline-offset: 0.35rem;
+}
+
+.admin-brand-link {
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: #e8e1d7;
+}
+
 .admin-brand-link img {
-  width: min(270px, 72%);
-  filter: brightness(0) invert(1);
+  width: auto;
+  height: 66px;
+  object-fit: contain;
 }
 
 .admin-login-brand-copy {
@@ -197,8 +216,13 @@
   background: var(--green);
 }
 
-.admin-sidebar-logo { padding: 0.1rem 0.7rem 2.2rem; }
-.admin-sidebar-logo img { width: 190px; filter: brightness(0) invert(1); }
+.admin-sidebar-logo {
+  margin-bottom: 2.2rem;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: #e8e1d7;
+}
+.admin-sidebar-logo img { width: auto; height: 66px; object-fit: contain; }
 
 .admin-sidebar nav { display: grid; gap: 0.35rem; }
 .admin-sidebar nav a,
@@ -339,7 +363,8 @@
   .admin-login-panel { min-height: 57vh; }
   .admin-workspace { grid-template-columns: 5rem minmax(0, 1fr); }
   .admin-sidebar { padding-inline: 0.7rem; }
-  .admin-sidebar-logo { padding-inline: 0; }
+  .admin-sidebar-logo { width: 100%; padding: 0.35rem; overflow: hidden; }
+  .admin-sidebar-logo img { width: 100%; height: auto; }
   .admin-sidebar nav a,
   .admin-sidebar nav button,
   .admin-sidebar nav span { justify-content: center; padding: 0; font-size: 0; }
@@ -352,13 +377,14 @@
 }
 
 @media (max-width: 620px) {
+  .admin-brand-link img { height: 54px; }
   .admin-login-brand { min-height: auto; padding: 2rem 1.4rem 3rem; }
   .admin-login-brand-copy { margin: 4rem 0; }
   .admin-login-panel { padding: 3rem 1.4rem; }
   .admin-workspace { display: block; }
   .admin-sidebar { position: static; width: 100%; height: auto; padding: 1rem; }
-  .admin-sidebar-logo { padding: 0; }
-  .admin-sidebar-logo img { width: 150px; }
+  .admin-sidebar-logo { width: fit-content; margin-bottom: 0; padding: 4px 9px; }
+  .admin-sidebar-logo img { width: auto; height: 54px; }
   .admin-sidebar nav,
   .admin-sidebar-security { display: none; }
   .admin-topbar { min-height: 5rem; padding-inline: 1rem; }

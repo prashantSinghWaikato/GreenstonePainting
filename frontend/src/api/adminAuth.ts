@@ -3,7 +3,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:808
 export type AdminSession = {
   email: string
   displayName: string
-  role: string
+  role: 'OWNER' | 'STAFF'
 }
 
 type ApiErrorBody = {
@@ -34,6 +34,14 @@ async function refreshCsrfToken() {
   const body = (await response.json()) as { headerName: string; token: string }
   csrfHeader = body.headerName
   csrfToken = body.token
+}
+
+export async function getAdminMutationHeaders() {
+  await refreshCsrfToken()
+  return {
+    'Content-Type': 'application/json',
+    [csrfHeader]: csrfToken,
+  }
 }
 
 export async function getAdminSession(): Promise<AdminSession | null> {

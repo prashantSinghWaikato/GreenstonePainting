@@ -3,6 +3,7 @@ import type { ChangeEvent, DragEvent, FormEvent } from 'react'
 import { AlertCircle, Building2, Check, Fence, Hammer, House, ImagePlus, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone, RotateCcw, X } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
 import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
+import { getPublishedProjects, type PublishedProject } from './api/projects'
 import { articles, heroSlides, projects, serviceAreas, services } from './data/site'
 import ColourStudio from './ColourStudio'
 import './App.css'
@@ -105,6 +106,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeHero, setActiveHero] = useState(0)
   const [activeProject, setActiveProject] = useState(0)
+  const [portfolioProjects, setPortfolioProjects] = useState<PublishedProject[]>(projects.map((project) => ({ ...project, slug: project.title, highlights: [] })))
   const [quoteForm, setQuoteForm] = useState(initialQuoteForm)
   const [submitting, setSubmitting] = useState(false)
   const [submissionReference, setSubmissionReference] = useState('')
@@ -126,6 +128,17 @@ function App() {
       setActiveHero((current) => (current + 1) % heroSlides.length)
     }, 6500)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    getPublishedProjects().then((published) => {
+      if (active && published.length) {
+        setPortfolioProjects(published)
+        setActiveProject(0)
+      }
+    }).catch(() => undefined)
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -370,7 +383,7 @@ function App() {
 
   const closeMenu = () => setMenuOpen(false)
   const closeColourStudio = useCallback(() => setColourStudioOpen(false), [])
-  const project = projects[activeProject]
+  const project = portfolioProjects[activeProject]
 
   return (
     <div className="site-shell">
@@ -504,7 +517,7 @@ function App() {
                 <dl><div><dt>Location</dt><dd>{project.location}</dd></div><div><dt>Scope</dt><dd>{project.category}</dd></div></dl>
                 <a className="button button-dark" href="#quote">Plan a Similar Project →</a>
                 <div className="project-selector">
-                  {projects.map((item, index) => <button className={index === activeProject ? 'is-active' : ''} type="button" onClick={() => setActiveProject(index)} aria-label={`Show ${item.title}`} key={item.title}><img src={item.image} alt="" /></button>)}
+                  {portfolioProjects.map((item, index) => <button className={index === activeProject ? 'is-active' : ''} type="button" onClick={() => setActiveProject(index)} aria-label={`Show ${item.title}`} key={item.slug}><img src={item.image} alt="" /></button>)}
                 </div>
               </div>
             </div>

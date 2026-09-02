@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,6 +17,10 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "enquiries")
 public class Enquiry extends BaseEntity {
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -93,6 +98,7 @@ public class Enquiry extends BaseEntity {
     }
 
     public EnquiryType getType() { return type; }
+    public long getVersion() { return version; }
     public void setType(EnquiryType type) { this.type = type; }
     public EnquiryStatus getStatus() { return status; }
     public void setStatus(EnquiryStatus status) { this.status = status; }

@@ -3,12 +3,17 @@ package org.greenstone.backend.admin.enquiry;
 import jakarta.persistence.criteria.Predicate;
 import org.greenstone.backend.enquiry.AttachmentDownload;
 import org.greenstone.backend.persistence.entity.Enquiry;
+import org.greenstone.backend.persistence.entity.EnquiryActivity;
+import org.greenstone.backend.persistence.entity.EnquiryActivityType;
 import org.greenstone.backend.persistence.entity.EnquiryStatus;
+import org.greenstone.backend.persistence.repository.AdminUserRepository;
+import org.greenstone.backend.persistence.repository.EnquiryActivityRepository;
 import org.greenstone.backend.persistence.repository.EnquiryAttachmentRepository;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.ServiceOfferingRepository;
 import org.greenstone.backend.storage.FileStorageService;
 import org.greenstone.backend.web.ResourceNotFoundException;
+import org.greenstone.backend.web.WorkflowConflictException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -33,17 +38,23 @@ public class AdminEnquiryService {
     private final EnquiryAttachmentRepository attachmentRepository;
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final FileStorageService fileStorageService;
+    private final EnquiryActivityRepository activityRepository;
+    private final AdminUserRepository adminUserRepository;
 
     public AdminEnquiryService(
             EnquiryRepository enquiryRepository,
             EnquiryAttachmentRepository attachmentRepository,
             ServiceOfferingRepository serviceOfferingRepository,
-            FileStorageService fileStorageService
+            FileStorageService fileStorageService,
+            EnquiryActivityRepository activityRepository,
+            AdminUserRepository adminUserRepository
     ) {
         this.enquiryRepository = enquiryRepository;
         this.attachmentRepository = attachmentRepository;
         this.serviceOfferingRepository = serviceOfferingRepository;
         this.fileStorageService = fileStorageService;
+        this.activityRepository = activityRepository;
+        this.adminUserRepository = adminUserRepository;
     }
 
     @Transactional(readOnly = true)
@@ -96,6 +107,67 @@ public class AdminEnquiryService {
     public AdminEnquiryDetailResponse find(UUID enquiryId) {
         var enquiry = enquiryRepository.findById(enquiryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Enquiry was not found."));
+        return toDetail(enquiry);
+    }
+
+    @Transactional
+    public AdminEnquiryDetailResponse updateWorkflow(
+            UUID enquiryId,
+            UpdateEnquiryWorkflowRequest request,
+            String actorEmail
+    ) {
+        var enquiry = enquiryRepository.findById(enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enquiry was not found."));
+        if (enquiry.getVersion() != request.version()) {
+            throw new WorkflowConflictException();
+        }
+
+        var actor = adminUserRepository.findByEmailIgnoreCase(actorEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Staff account is no longer available."));
+        var previousStatus = enquiry.getStatus();
+        var previousNotes = normalizeNotes(enquiry.getInternalNotes());
+        var updatedNotes = normalizeNotes(request.internalNotes());
+        var statusChanged = previousStatus != request.status();
+        var notesChanged = !java.util.Objects.equals(previousNotes, updatedNotes);
+
+        if (!statusChanged && !notesChanged) {
+            return toDetail(enquiry);
+        }
+
+        enquiry.setStatus(request.status());
+        enquiry.setInternalNotes(updatedNotes);
+        try {
+            enquiryRepository.flush();
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException exception) {
+            throw new WorkflowConflictException();
+        }
+
+        if (statusChanged) {
+            activityRepository.save(new EnquiryActivity(
+                    enquiry,
+                    actor,
+                    EnquiryActivityType.STATUS_CHANGED,
+                    previousStatus,
+                    request.status(),
+                    "Status changed from " + statusLabel(previousStatus) + " to " + statusLabel(request.status()) + "."
+            ));
+        }
+        if (notesChanged) {
+            activityRepository.save(new EnquiryActivity(
+                    enquiry,
+                    actor,
+                    EnquiryActivityType.NOTE_UPDATED,
+                    null,
+                    null,
+                    updatedNotes == null ? "Internal notes cleared." : "Internal notes updated."
+            ));
+        }
+        activityRepository.flush();
+        return toDetail(enquiry);
+    }
+
+    private AdminEnquiryDetailResponse toDetail(Enquiry enquiry) {
+        var enquiryId = enquiry.getId();
         var attachments = attachmentRepository.findAllByEnquiryId(enquiryId).stream()
                 .map(attachment -> new AdminEnquiryAttachmentResponse(
                         attachment.getId(),
@@ -105,11 +177,23 @@ public class AdminEnquiryService {
                         attachment.getCreatedAt()
                 ))
                 .toList();
+        var activities = activityRepository.findAllByEnquiryIdOrderByCreatedAtDesc(enquiryId).stream()
+                .map(activity -> new AdminEnquiryActivityResponse(
+                        activity.getId(),
+                        activity.getActivityType(),
+                        activity.getPreviousStatus(),
+                        activity.getNewStatus(),
+                        activity.getSummary(),
+                        activity.getActor().getDisplayName(),
+                        activity.getCreatedAt()
+                ))
+                .toList();
         var service = enquiry.getService();
 
         return new AdminEnquiryDetailResponse(
                 enquiry.getId(),
                 reference(enquiry.getId()),
+                enquiry.getVersion(),
                 enquiry.getType(),
                 enquiry.getStatus(),
                 enquiry.getFirstName(),
@@ -126,9 +210,11 @@ public class AdminEnquiryService {
                 enquiry.getDesiredStartDate(),
                 enquiry.getInternalNotes(),
                 enquiry.getCreatedAt(),
+                enquiry.getUpdatedAt(),
                 enquiry.getCompletedAt(),
                 enquiry.getNotificationSentAt(),
-                attachments
+                attachments,
+                activities
         );
     }
 
@@ -210,5 +296,17 @@ public class AdminEnquiryService {
 
     private String escapeLike(String value) {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    private String normalizeNotes(String notes) {
+        if (notes == null || notes.isBlank()) {
+            return null;
+        }
+        return notes.trim();
+    }
+
+    private String statusLabel(EnquiryStatus status) {
+        var words = status.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 }

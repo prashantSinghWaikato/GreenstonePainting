@@ -1,15 +1,21 @@
+import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, MapPin, Paintbrush } from 'lucide-react'
 import { PublicFooter, PublicHeader } from './Blog'
 import { projects } from './data/site'
+import { getPublishedProjects, type PublishedProject } from './api/projects'
 import './Projects.css'
 
-const projectNotes = [
-  ['Multi-surface exterior work', 'Preparation-led finish', 'Modern residential outcome'],
-  ['Coordinated interior package', 'Walls, ceilings, and trim', 'Consistent new-build finish'],
-  ['Complete exterior refresh', 'Updated colour direction', 'Before-and-after transformation'],
-]
+const fallbackProjects: PublishedProject[] = projects.map((project) => ({ ...project, slug: project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), highlights: [project.category, 'Preparation-led finish', 'Quality-controlled outcome'] }))
 
 export default function ProjectsPage() {
+  const [portfolio, setPortfolio] = useState<PublishedProject[]>(fallbackProjects)
+
+  useEffect(() => {
+    let active = true
+    getPublishedProjects().then((published) => { if (active && published.length) setPortfolio(published) }).catch(() => undefined)
+    return () => { active = false }
+  }, [])
+
   return <div className="site-shell projects-page-shell">
     <PublicHeader active="projects" />
     <main id="main-content">
@@ -26,9 +32,9 @@ export default function ProjectsPage() {
       <section className="section projects-intro" aria-labelledby="projects-heading"><div className="page-container projects-intro-layout"><div><p className="eyebrow">Project portfolio</p><h2 id="projects-heading">Selected outcomes.<br />Clearly presented.</h2></div><div><p>Each project starts with the property and the surfaces in front of us. Preparation, product selection, access, and sequencing are defined around the actual scope—not a one-size-fits-all process.</p><a href="/services/">Explore our painting services <ArrowRight size={15} aria-hidden="true" /></a></div></div></section>
 
       <section className="projects-gallery" aria-label="Featured painting projects">
-        {projects.map((project, index) => <article className={`portfolio-project portfolio-project-${index + 1}`} key={project.title}>
+        {portfolio.map((project, index) => <article className={`portfolio-project portfolio-project-${(index % 3) + 1}`} id={project.slug} key={project.slug}>
           <div className="portfolio-image"><img src={project.image} alt={project.alt} /><div className="portfolio-image-shade" aria-hidden="true" /><span>{project.category}</span></div>
-          <div className="portfolio-copy"><div className="portfolio-location"><MapPin size={15} strokeWidth={1.8} aria-hidden="true" />{project.location}</div><h2>{project.title}</h2><p>{project.summary}</p><ul>{projectNotes[index].map((note) => <li key={note}><CheckCircle2 size={16} strokeWidth={1.8} aria-hidden="true" />{note}</li>)}</ul><a href="/#quote">Discuss a similar project <ArrowRight size={16} aria-hidden="true" /></a></div>
+          <div className="portfolio-copy"><div className="portfolio-location"><MapPin size={15} strokeWidth={1.8} aria-hidden="true" />{project.location}</div><h2>{project.title}</h2><p>{project.summary}</p><ul>{project.highlights.map((note) => <li key={note}><CheckCircle2 size={16} strokeWidth={1.8} aria-hidden="true" />{note}</li>)}</ul><a href="/#quote">Discuss a similar project <ArrowRight size={16} aria-hidden="true" /></a></div>
         </article>)}
       </section>
 

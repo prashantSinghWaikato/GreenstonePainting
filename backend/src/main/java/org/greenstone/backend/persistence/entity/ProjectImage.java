@@ -30,13 +30,25 @@ public class ProjectImage extends BaseEntity {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
+    @Column(name = "original_filename", nullable = false, length = 255)
+    private String originalFilename;
+
+    @Column(name = "content_type", nullable = false, length = 150)
+    private String contentType;
+
+    @Column(name = "size_bytes", nullable = false)
+    private long sizeBytes;
+
     protected ProjectImage() {
     }
 
-    public ProjectImage(PortfolioProject project, String objectKey, String altText) {
+    public ProjectImage(PortfolioProject project, String objectKey, String altText, String originalFilename, String contentType, long sizeBytes) {
         this.project = project;
         this.objectKey = objectKey;
         this.altText = altText;
+        this.originalFilename = originalFilename;
+        this.contentType = contentType;
+        this.sizeBytes = sizeBytes;
     }
 
     public PortfolioProject getProject() { return project; }
@@ -49,4 +61,7 @@ public class ProjectImage extends BaseEntity {
     public void setPhase(ProjectImagePhase phase) { this.phase = phase; }
     public int getDisplayOrder() { return displayOrder; }
     public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
+    public String getOriginalFilename() { return originalFilename; }
+    public String getContentType() { return contentType; }
+    public long getSizeBytes() { return sizeBytes; }
 }

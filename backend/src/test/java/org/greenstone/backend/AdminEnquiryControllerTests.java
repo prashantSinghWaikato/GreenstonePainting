@@ -1,10 +1,13 @@
 package org.greenstone.backend;
 
 import org.greenstone.backend.persistence.entity.Enquiry;
+import org.greenstone.backend.persistence.entity.AdminUser;
 import org.greenstone.backend.persistence.entity.EnquiryAttachment;
 import org.greenstone.backend.persistence.entity.EnquiryStatus;
 import org.greenstone.backend.persistence.entity.EnquiryType;
 import org.greenstone.backend.persistence.repository.EnquiryAttachmentRepository;
+import org.greenstone.backend.persistence.repository.AdminUserRepository;
+import org.greenstone.backend.persistence.repository.EnquiryActivityRepository;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.ServiceOfferingRepository;
 import org.greenstone.backend.storage.FileStorageService;
@@ -26,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.file.Path;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -61,10 +66,21 @@ class AdminEnquiryControllerTests {
     @Autowired
     private FileStorageService fileStorageService;
 
+    @Autowired
+    private AdminUserRepository adminUserRepository;
+
+    @Autowired
+    private EnquiryActivityRepository activityRepository;
+
     private Enquiry newEnquiry;
 
     @BeforeEach
     void createEnquiries() {
+        adminUserRepository.save(new AdminUser(
+                "office@greenstonepainting.co.nz",
+                "test-password-hash",
+                "Greenstone Office"
+        ));
         var interior = serviceOfferingRepository.findBySlug("interior-painting").orElseThrow();
         newEnquiry = new Enquiry(
                 EnquiryType.QUOTE_REQUEST,
@@ -121,7 +137,75 @@ class AdminEnquiryControllerTests {
                 .andExpect(jsonPath("$.firstName").value("Aroha"))
                 .andExpect(jsonPath("$.serviceTitle").value("Interior Painting"))
                 .andExpect(jsonPath("$.message").value("Please repaint our three-bedroom home."))
-                .andExpect(jsonPath("$.attachments").isArray());
+                .andExpect(jsonPath("$.version").isNumber())
+                .andExpect(jsonPath("$.attachments").isArray())
+                .andExpect(jsonPath("$.activities").isArray());
+    }
+
+    @Test
+    void updatesStatusAndNotesWithAnAttributedActivityTimeline() throws Exception {
+        mockMvc.perform(patch("/api/admin/enquiries/{id}/workflow", newEnquiry.getId())
+                        .with(user("office@greenstonepainting.co.nz").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "IN_REVIEW",
+                                  "internalNotes": "Call the customer after 3 pm.",
+                                  "version": 0
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_REVIEW"))
+                .andExpect(jsonPath("$.internalNotes").value("Call the customer after 3 pm."))
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.activities.length()").value(2))
+                .andExpect(jsonPath("$.activities[0].actorDisplayName").value("Greenstone Office"));
+
+        org.assertj.core.api.Assertions.assertThat(
+                activityRepository.findAllByEnquiryIdOrderByCreatedAtDesc(newEnquiry.getId())
+        ).hasSize(2);
+    }
+
+    @Test
+    void rejectsAStaleWorkflowUpdateWithoutOverwritingNewerWork() throws Exception {
+        mockMvc.perform(patch("/api/admin/enquiries/{id}/workflow", newEnquiry.getId())
+                        .with(user("office@greenstonepainting.co.nz").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "CONTACTED",
+                                  "internalNotes": null,
+                                  "version": 99
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "This enquiry was updated by another staff member. Reload the latest version before saving again."
+                ));
+
+        org.assertj.core.api.Assertions.assertThat(enquiryRepository.findById(newEnquiry.getId()).orElseThrow().getStatus())
+                .isEqualTo(EnquiryStatus.NEW);
+    }
+
+    @Test
+    void requiresAuthenticationAndCsrfForWorkflowChanges() throws Exception {
+        var body = """
+                {"status":"IN_REVIEW","internalNotes":null,"version":0}
+                """;
+
+        mockMvc.perform(patch("/api/admin/enquiries/{id}/workflow", newEnquiry.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(patch("/api/admin/enquiries/{id}/workflow", newEnquiry.getId())
+                        .with(user("office@greenstonepainting.co.nz").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
     }
 
     @Test

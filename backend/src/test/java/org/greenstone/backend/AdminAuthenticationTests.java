@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -64,7 +65,7 @@ class AdminAuthenticationTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.displayName").value("Greenstone Office"))
-                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.role").value("OWNER"))
                 .andReturn();
 
         var session = (MockHttpSession) result.getRequest().getSession(false);
@@ -104,7 +105,7 @@ class AdminAuthenticationTests {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.role").value("ADMIN"));
+                .andExpect(jsonPath("$.role").value("OWNER"));
     }
 
     @Test
@@ -120,6 +121,37 @@ class AdminAuthenticationTests {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Email or password is incorrect."));
+    }
+
+    @Test
+    void temporarilyLocksAnAccountAfterFiveFailedSignInAttempts() throws Exception {
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            mockMvc.perform(post("/api/admin/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "email": "office@greenstonepainting.co.nz",
+                                      "password": "incorrect-password"
+                                    }
+                                    """))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/admin/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "office@greenstonepainting.co.nz",
+                                  "password": "incorrect-password"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many unsuccessful sign-in attempts. Try again in 15 minutes."));
+
+        assertThat(adminUserRepository.findByEmailIgnoreCase("office@greenstonepainting.co.nz").orElseThrow().isLocked())
+                .isTrue();
     }
 
     @Test

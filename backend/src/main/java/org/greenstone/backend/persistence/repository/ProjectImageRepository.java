@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface ProjectImageRepository extends JpaRepository<ProjectImage, UUID> {
     List<ProjectImage> findAllByProjectIdOrderByDisplayOrderAsc(UUID projectId);
+    long countByProjectId(UUID projectId);
 }

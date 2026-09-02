@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Download, ExternalLink, Image, Inbox, LoaderCircle, Mail, MapPin, Phone, Search, SlidersHorizontal, UserRound, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Download, ExternalLink, History, Image, Inbox, LoaderCircle, Mail, MapPin, Phone, RefreshCw, Save, Search, SlidersHorizontal, StickyNote, UserRound, X } from 'lucide-react'
 import {
   AdminEnquiryApiError,
   getAdminEnquiry,
   getAdminEnquiryPhoto,
   listAdminEnquiries,
+  updateAdminEnquiryWorkflow,
   type AdminEnquiryAttachment,
   type AdminEnquiryDetail,
   type AdminEnquiryFilters,
@@ -82,21 +83,60 @@ function ProjectPhoto({ enquiryId, attachment }: { enquiryId: string; attachment
   )
 }
 
-function EnquiryDetail({ enquiryId, onBack, onSessionExpired }: { enquiryId: string; onBack: () => void; onSessionExpired: () => void }) {
+function EnquiryDetail({
+  enquiryId,
+  onBack,
+  onSessionExpired,
+  onWorkflowUpdated,
+}: {
+  enquiryId: string
+  onBack: () => void
+  onSessionExpired: () => void
+  onWorkflowUpdated: () => void
+}) {
   const [enquiry, setEnquiry] = useState<AdminEnquiryDetail | null>(null)
   const [error, setError] = useState('')
+  const [draftStatus, setDraftStatus] = useState<EnquiryStatus>('NEW')
+  const [draftNotes, setDraftNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [savedMessage, setSavedMessage] = useState('')
+  const [conflict, setConflict] = useState(false)
+  const [confirmingTerminalStatus, setConfirmingTerminalStatus] = useState(false)
+
+  const applyDetail = useCallback((detail: AdminEnquiryDetail) => {
+    setEnquiry(detail)
+    setDraftStatus(detail.status)
+    setDraftNotes(detail.internalNotes ?? '')
+    setConflict(false)
+  }, [])
 
   useEffect(() => {
     let active = true
     getAdminEnquiry(enquiryId)
-      .then((detail) => { if (active) setEnquiry(detail) })
+      .then((detail) => { if (active) applyDetail(detail) })
       .catch((caught) => {
         if (!active) return
         if (caught instanceof AdminEnquiryApiError && caught.status === 401) onSessionExpired()
         else setError(caught instanceof Error ? caught.message : 'The enquiry could not be loaded.')
       })
     return () => { active = false }
-  }, [enquiryId, onSessionExpired])
+  }, [applyDetail, enquiryId, onSessionExpired])
+
+  async function reloadLatest() {
+    setSaving(true)
+    setSaveError('')
+    try {
+      applyDetail(await getAdminEnquiry(enquiryId))
+      setSavedMessage('Latest enquiry version loaded.')
+      onWorkflowUpdated()
+    } catch (caught) {
+      if (caught instanceof AdminEnquiryApiError && caught.status === 401) onSessionExpired()
+      else setSaveError(caught instanceof Error ? caught.message : 'The latest enquiry could not be loaded.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (error) {
     return <div className="enquiry-state"><div className="admin-form-error" role="alert">{error}</div><button type="button" onClick={onBack} className="enquiry-secondary-button">Back to inbox</button></div>
@@ -106,6 +146,46 @@ function EnquiryDetail({ enquiryId, onBack, onSessionExpired }: { enquiryId: str
   }
 
   const customerName = `${enquiry.firstName} ${enquiry.lastName}`
+  const normalizedNotes = draftNotes.trim()
+  const workflowChanged = draftStatus !== enquiry.status || normalizedNotes !== (enquiry.internalNotes ?? '')
+
+  async function saveWorkflow(event?: FormEvent<HTMLFormElement>, terminalConfirmed = false) {
+    event?.preventDefault()
+    if (!enquiry || !workflowChanged) return
+    const terminalStatus = draftStatus === 'LOST' || draftStatus === 'CLOSED'
+    if (terminalStatus && draftStatus !== enquiry.status && !terminalConfirmed) {
+      setConfirmingTerminalStatus(true)
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+    setSavedMessage('')
+    setConflict(false)
+    try {
+      const updated = await updateAdminEnquiryWorkflow(enquiry.id, {
+        status: draftStatus,
+        internalNotes: normalizedNotes || null,
+        version: enquiry.version,
+      })
+      applyDetail(updated)
+      setSavedMessage('Workflow changes saved successfully.')
+      onWorkflowUpdated()
+    } catch (caught) {
+      if (caught instanceof AdminEnquiryApiError && caught.status === 401) {
+        onSessionExpired()
+      } else if (caught instanceof AdminEnquiryApiError && caught.status === 409) {
+        setConflict(true)
+        setSaveError(caught.message)
+      } else {
+        setSaveError(caught instanceof Error ? caught.message : 'The workflow changes could not be saved.')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmingTerminalStatus(false)
+    }
+  }
+
   return (
     <section className="enquiry-detail">
       <button type="button" onClick={onBack} className="enquiry-back"><ArrowLeft aria-hidden="true" /> Back to enquiries</button>
@@ -134,15 +214,41 @@ function EnquiryDetail({ enquiryId, onBack, onSessionExpired }: { enquiryId: str
             ) : <div className="enquiry-no-photos"><Image aria-hidden="true" /><p>No project photos were attached to this request.</p></div>}
           </section>
 
-          {enquiry.internalNotes && (
-            <section className="enquiry-detail-card">
-              <div className="enquiry-card-heading"><span>Existing internal notes</span><strong>Read only</strong></div>
-              <p className="enquiry-message">{enquiry.internalNotes}</p>
-            </section>
-          )}
+          <section className="enquiry-detail-card enquiry-activity-card">
+            <div className="enquiry-card-heading"><span>Activity timeline</span><strong>{enquiry.activities.length + 1} events</strong></div>
+            <div className="enquiry-timeline">
+              {enquiry.activities.map((activity) => (
+                <article key={activity.id} className="enquiry-timeline-item">
+                  <div className="enquiry-timeline-icon">{activity.type === 'STATUS_CHANGED' ? <RefreshCw aria-hidden="true" /> : <StickyNote aria-hidden="true" />}</div>
+                  <div>
+                    <strong>{activity.summary}</strong>
+                    {activity.type === 'STATUS_CHANGED' && activity.previousStatus && activity.newStatus && (
+                      <div className="enquiry-timeline-statuses"><StatusBadge status={activity.previousStatus} /><ArrowRight aria-hidden="true" /><StatusBadge status={activity.newStatus} /></div>
+                    )}
+                    <span>{activity.actorDisplayName} · {formatDate(activity.createdAt)}</span>
+                  </div>
+                </article>
+              ))}
+              <article className="enquiry-timeline-item">
+                <div className="enquiry-timeline-icon"><Inbox aria-hidden="true" /></div>
+                <div><strong>Quote request received.</strong><span>Website form · {formatDate(enquiry.createdAt)}</span></div>
+              </article>
+            </div>
+          </section>
         </div>
 
         <aside className="enquiry-detail-sidebar">
+          <section className="enquiry-workflow-card">
+            <div className="enquiry-workflow-heading"><span className="admin-eyebrow">Enquiry workflow</span><History aria-hidden="true" /></div>
+            <form onSubmit={saveWorkflow}>
+              <label><span>Status</span><select value={draftStatus} onChange={(event) => { setDraftStatus(event.target.value as EnquiryStatus); setSavedMessage(''); setSaveError(''); setConflict(false) }}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label><span>Private internal notes</span><textarea value={draftNotes} onChange={(event) => { setDraftNotes(event.target.value); setSavedMessage(''); setSaveError(''); setConflict(false) }} maxLength={10000} rows={6} placeholder="Add follow-up details for staff only…" /><small>{draftNotes.length.toLocaleString('en-NZ')} / 10,000</small></label>
+              {savedMessage && <div className="enquiry-workflow-success" role="status"><CheckCircle2 aria-hidden="true" /> {savedMessage}</div>}
+              {saveError && <div className={`enquiry-workflow-error${conflict ? ' enquiry-workflow-error--conflict' : ''}`} role="alert"><AlertTriangle aria-hidden="true" /><span>{saveError}</span>{conflict && <button type="button" onClick={reloadLatest} disabled={saving}><RefreshCw aria-hidden="true" /> Reload latest</button>}</div>}
+              <button type="submit" className="enquiry-save-button" disabled={!workflowChanged || saving}>{saving ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <Save aria-hidden="true" />}{saving ? 'Saving…' : workflowChanged ? 'Save workflow' : 'No changes to save'}</button>
+            </form>
+            <p className="enquiry-workflow-help">Changes are private to staff and recorded in the activity timeline.</p>
+          </section>
           <section className="enquiry-contact-card">
             <span className="admin-eyebrow">Customer contact</span>
             <h2>{customerName}</h2>
@@ -160,6 +266,18 @@ function EnquiryDetail({ enquiryId, onBack, onSessionExpired }: { enquiryId: str
           </section>
         </aside>
       </div>
+
+      {confirmingTerminalStatus && (
+        <div className="enquiry-confirm-overlay" role="presentation">
+          <section className="enquiry-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="terminal-status-title">
+            <AlertTriangle aria-hidden="true" />
+            <span className="admin-eyebrow">Confirm status change</span>
+            <h2 id="terminal-status-title">Mark this enquiry as {statusLabels[draftStatus]}?</h2>
+            <p>This will move the request out of the active follow-up workflow. The change remains visible in the activity timeline.</p>
+            <div><button type="button" onClick={() => setConfirmingTerminalStatus(false)} className="enquiry-dialog-cancel">Cancel</button><button type="button" onClick={() => void saveWorkflow(undefined, true)} className="enquiry-dialog-confirm">Confirm change</button></div>
+          </section>
+        </div>
+      )}
     </section>
   )
 }
@@ -172,6 +290,7 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [workflowRevision, setWorkflowRevision] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -184,7 +303,7 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [filters, pageNumber, onSessionExpired])
+  }, [filters, pageNumber, onSessionExpired, workflowRevision])
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -215,7 +334,7 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
   }
 
   if (selectedId) {
-    return <EnquiryDetail enquiryId={selectedId} onBack={() => setSelectedId('')} onSessionExpired={onSessionExpired} />
+    return <EnquiryDetail enquiryId={selectedId} onBack={() => setSelectedId('')} onSessionExpired={onSessionExpired} onWorkflowUpdated={() => setWorkflowRevision((revision) => revision + 1)} />
   }
 
   const allCount = data ? Object.values(data.statusCounts).reduce((sum, count) => sum + count, 0) : 0
@@ -226,7 +345,7 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
     <section className="enquiry-inbox">
       <header className="enquiry-inbox-heading">
         <div><span className="admin-eyebrow">Customer enquiries</span><h1>Quote request inbox</h1><p>Find and review every website request in one secure place.</p></div>
-        <span className="enquiry-readonly-label">Read-only view</span>
+        <span className="enquiry-readonly-label">Workflow enabled</span>
       </header>
 
       <div className="enquiry-metrics" aria-label="Enquiry summary">

@@ -6,7 +6,9 @@ import jakarta.validation.Valid;
 import org.greenstone.backend.persistence.entity.AdminUser;
 import org.greenstone.backend.persistence.repository.AdminUserRepository;
 import org.greenstone.backend.web.ResourceNotFoundException;
+import org.greenstone.backend.web.AdminAccountLockedException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,17 +30,20 @@ public class AdminAuthController {
     private final SecurityContextRepository securityContextRepository;
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
     private final AdminUserRepository adminUserRepository;
+    private final AdminLoginSecurityService loginSecurityService;
 
     public AdminAuthController(
             AuthenticationManager authenticationManager,
             SecurityContextRepository securityContextRepository,
             SessionAuthenticationStrategy sessionAuthenticationStrategy,
-            AdminUserRepository adminUserRepository
+            AdminUserRepository adminUserRepository,
+            AdminLoginSecurityService loginSecurityService
     ) {
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
         this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
         this.adminUserRepository = adminUserRepository;
+        this.loginSecurityService = loginSecurityService;
     }
 
     @GetMapping("/csrf")
@@ -57,7 +62,19 @@ public class AdminAuthController {
                 loginRequest.password()
         );
         token.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        var authentication = authenticationManager.authenticate(token);
+        org.springframework.security.core.Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(token);
+        } catch (LockedException exception) {
+            throw new AdminAccountLockedException();
+        } catch (org.springframework.security.core.AuthenticationException exception) {
+            if (loginSecurityService.recordFailedLogin(loginRequest.email().trim())) {
+                throw new AdminAccountLockedException();
+            }
+            throw exception;
+        }
+
+        loginSecurityService.recordSuccessfulLogin(authentication.getName());
 
         sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
         var context = SecurityContextHolder.createEmptyContext();

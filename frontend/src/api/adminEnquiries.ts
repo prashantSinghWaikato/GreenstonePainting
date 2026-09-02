@@ -1,3 +1,5 @@
+import { getAdminMutationHeaders } from './adminAuth'
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 export type EnquiryStatus = 'NEW' | 'IN_REVIEW' | 'CONTACTED' | 'QUOTED' | 'WON' | 'LOST' | 'CLOSED'
@@ -27,6 +29,7 @@ export type AdminEnquiryAttachment = {
 }
 
 export type AdminEnquiryDetail = Omit<AdminEnquirySummary, 'attachmentCount'> & {
+  version: number
   type: 'GENERAL' | 'QUOTE_REQUEST'
   contactPreference: 'EMAIL' | 'PHONE' | 'EITHER'
   suburb: string | null
@@ -34,8 +37,20 @@ export type AdminEnquiryDetail = Omit<AdminEnquirySummary, 'attachmentCount'> & 
   estimatedBudget: number | null
   desiredStartDate: string | null
   internalNotes: string | null
+  updatedAt: string
   notificationSentAt: string | null
   attachments: AdminEnquiryAttachment[]
+  activities: AdminEnquiryActivity[]
+}
+
+export type AdminEnquiryActivity = {
+  id: string
+  type: 'STATUS_CHANGED' | 'NOTE_UPDATED'
+  previousStatus: EnquiryStatus | null
+  newStatus: EnquiryStatus | null
+  summary: string
+  actorDisplayName: string
+  createdAt: string
 }
 
 export type AdminEnquiryPage = {
@@ -104,4 +119,30 @@ export async function getAdminEnquiryPhoto(enquiryId: string, attachmentId: stri
     throw new AdminEnquiryApiError('The project photo could not be loaded.', response.status)
   }
   return response.blob()
+}
+
+export async function updateAdminEnquiryWorkflow(
+  enquiryId: string,
+  update: { status: EnquiryStatus; internalNotes: string | null; version: number },
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/admin/enquiries/${encodeURIComponent(enquiryId)}/workflow`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: await getAdminMutationHeaders(),
+      body: JSON.stringify(update),
+    },
+  )
+  if (!response.ok) {
+    let message = 'The enquiry workflow could not be saved.'
+    try {
+      const body = (await response.json()) as { message?: string }
+      message = body.message || message
+    } catch {
+      // Keep the user-friendly fallback when an intermediary returns non-JSON.
+    }
+    throw new AdminEnquiryApiError(message, response.status)
+  }
+  return response.json() as Promise<AdminEnquiryDetail>
 }

@@ -13,6 +13,7 @@ import java.util.UUID;
 public record AdminEnquiryDetailResponse(
         UUID id,
         String reference,
+        long version,
         EnquiryType type,
         EnquiryStatus status,
         String firstName,
@@ -29,8 +30,10 @@ public record AdminEnquiryDetailResponse(
         LocalDate desiredStartDate,
         String internalNotes,
         OffsetDateTime createdAt,
+        OffsetDateTime updatedAt,
         OffsetDateTime completedAt,
         OffsetDateTime notificationSentAt,
-        List<AdminEnquiryAttachmentResponse> attachments
+        List<AdminEnquiryAttachmentResponse> attachments,
+        List<AdminEnquiryActivityResponse> activities
 ) {
 }

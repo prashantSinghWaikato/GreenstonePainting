@@ -3,9 +3,16 @@ import type { FormEvent } from 'react'
 import { ArrowRight, FileText, Inbox, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Settings, ShieldCheck } from 'lucide-react'
 import { getAdminSession, signInAdmin, signOutAdmin, type AdminSession } from './api/adminAuth'
 import AdminEnquiries from './AdminEnquiries'
+import AdminProjects from './AdminProjects'
+import AdminSettings from './AdminSettings'
 import './AdminApp.css'
 
-type AdminView = 'overview' | 'enquiries'
+type AdminView = 'overview' | 'enquiries' | 'content' | 'settings'
+
+function viewFromLocation(): AdminView {
+  const section = new URLSearchParams(window.location.search).get('section')
+  return section === 'enquiries' || section === 'content' || section === 'settings' ? section : 'overview'
+}
 
 function StaffLogin({ onAuthenticated }: { onAuthenticated: (session: AdminSession) => void }) {
   const [email, setEmail] = useState('')
@@ -117,14 +124,14 @@ function AdminWorkspace({
   return (
     <div className="admin-workspace">
       <aside className="admin-sidebar">
-        <a href="/" className="admin-sidebar-logo" aria-label="Greenstone Painting public website">
+        <button type="button" className="admin-sidebar-logo" onClick={() => onNavigate('overview')} aria-label="Go to admin overview">
           <img src="/images/greenstone-logo.png" alt="Greenstone Painting" />
-        </a>
+        </button>
         <nav aria-label="Staff portal">
           <button type="button" onClick={() => onNavigate('overview')} className={view === 'overview' ? 'active' : ''} aria-current={view === 'overview' ? 'page' : undefined}><LayoutDashboard aria-hidden="true" /> Overview</button>
           <button type="button" onClick={() => onNavigate('enquiries')} className={view === 'enquiries' ? 'active' : ''} aria-current={view === 'enquiries' ? 'page' : undefined}><Inbox aria-hidden="true" /> Enquiries</button>
-          <span aria-disabled="true"><FileText aria-hidden="true" /> Content</span>
-          <span aria-disabled="true"><Settings aria-hidden="true" /> Settings</span>
+          <button type="button" onClick={() => onNavigate('content')} className={view === 'content' ? 'active' : ''} aria-current={view === 'content' ? 'page' : undefined}><FileText aria-hidden="true" /> Content</button>
+          <button type="button" onClick={() => onNavigate('settings')} className={view === 'settings' ? 'active' : ''} aria-current={view === 'settings' ? 'page' : undefined}><Settings aria-hidden="true" /> Settings</button>
         </nav>
         <div className="admin-sidebar-security"><ShieldCheck aria-hidden="true" /><span>Secure staff session</span></div>
       </aside>
@@ -141,10 +148,14 @@ function AdminWorkspace({
           </button>
         </header>
 
-        <section className={`admin-content${view === 'enquiries' ? ' admin-content--wide' : ''}`}>
+        <section className={`admin-content${view !== 'overview' ? ' admin-content--wide' : ''}`}>
           {signOutError && <div className="admin-form-error" role="alert">{signOutError}</div>}
           {view === 'enquiries' ? (
             <AdminEnquiries onSessionExpired={onSignedOut} />
+          ) : view === 'content' ? (
+            <AdminProjects session={session} onSessionExpired={onSignedOut} />
+          ) : view === 'settings' ? (
+            <AdminSettings session={session} onSessionExpired={onSignedOut} />
           ) : (
             <>
               <div className="admin-page-heading">
@@ -166,17 +177,17 @@ function AdminWorkspace({
                   <h2>Open enquiry inbox</h2>
                   <p>Search requests, review project details and securely view customer photos.</p>
                 </button>
-                <article className="admin-status-card">
-                  <span>Planned</span>
+                <button type="button" className="admin-status-card admin-status-card--button" onClick={() => onNavigate('content')}>
+                  <span>Available now</span>
                   <FileText aria-hidden="true" />
                   <h2>Website content</h2>
-                  <p>Manage projects, services and articles without editing code.</p>
-                </article>
+                  <p>Create project drafts, manage images and control what is published on the customer website.</p>
+                </button>
               </div>
 
               <section className="admin-next-panel">
                 <div><span className="admin-eyebrow">Inbox connected</span><h2>Customer requests in one place</h2></div>
-                <p>This first operational view is intentionally read-only. Status updates, ownership and internal notes can be added after the team confirms the review workflow.</p>
+                <p>Move enquiries through the team workflow, keep internal notes beside each request, and control staff access from Settings.</p>
               </section>
             </>
           )}
@@ -190,18 +201,18 @@ export default function AdminApp() {
   const [session, setSession] = useState<AdminSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [view, setView] = useState<AdminView>(() => new URLSearchParams(window.location.search).get('section') === 'enquiries' ? 'enquiries' : 'overview')
+  const [view, setView] = useState<AdminView>(viewFromLocation)
 
   useEffect(() => {
     function handlePopState() {
-      setView(new URLSearchParams(window.location.search).get('section') === 'enquiries' ? 'enquiries' : 'overview')
+      setView(viewFromLocation())
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
   function navigate(nextView: AdminView) {
-    const url = nextView === 'enquiries' ? '/admin/?section=enquiries' : '/admin/'
+    const url = nextView === 'overview' ? '/admin/' : `/admin/?section=${nextView}`
     window.history.pushState({}, '', url)
     setView(nextView)
   }
