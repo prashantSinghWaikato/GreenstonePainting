@@ -35,7 +35,8 @@
 .blog-card h3 a:hover { color: #8e3825; }
 .blog-card-body > p:not(.blog-meta) { margin: 0; color: #58655f; font-size: .75rem; line-height: 1.65; }
 .blog-read-link { display: inline-flex; width: fit-content; margin-top: auto; padding-top: 24px; color: #8e3825; align-items: center; gap: 7px; font-size: .69rem; font-weight: 700; text-decoration: none; }
-.blog-card-index { position: absolute; right: 17px; bottom: 15px; color: rgba(16,27,42,.13); font-family: 'Manrope', sans-serif; font-size: 2.2rem; font-weight: 700; }
+.blog-loading { display: flex; min-height: 620px; color: rgba(255,255,255,.78); background: #10263a; align-items: center; justify-content: center; gap: .7rem; }
+.blog-loading svg { width: 1.2rem; animation: admin-spin .8s linear infinite; }
 
 .blog-callout { color: #fff; background: #8f4b3b; }
 .blog-callout-inner { display: flex; min-height: 330px; align-items: center; justify-content: space-between; gap: 60px; }

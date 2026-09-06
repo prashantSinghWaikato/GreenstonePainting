@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { ArrowRight, FileText, Inbox, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Settings, ShieldCheck } from 'lucide-react'
 import { getAdminSession, signInAdmin, signOutAdmin, type AdminSession } from './api/adminAuth'
 import AdminEnquiries from './AdminEnquiries'
-import AdminProjects from './AdminProjects'
+import AdminContent from './AdminContent'
 import AdminSettings from './AdminSettings'
 import './AdminApp.css'
 
@@ -153,7 +153,7 @@ function AdminWorkspace({
           {view === 'enquiries' ? (
             <AdminEnquiries onSessionExpired={onSignedOut} />
           ) : view === 'content' ? (
-            <AdminProjects session={session} onSessionExpired={onSignedOut} />
+            <AdminContent session={session} onSessionExpired={onSignedOut} />
           ) : view === 'settings' ? (
             <AdminSettings session={session} onSessionExpired={onSignedOut} />
           ) : (

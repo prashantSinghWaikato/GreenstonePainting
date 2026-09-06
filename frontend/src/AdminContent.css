@@ -1,0 +1,5 @@
+.content-module-tabs { display: inline-flex; margin: 0 0 2rem; padding: .3rem; border: 1px solid rgba(16,27,42,.15); background: #c4cfd3; gap: .3rem; }
+.content-module-tabs button { display: inline-flex; min-height: 3rem; padding: 0 1rem; color: #52616a; border: 0; background: transparent; align-items: center; gap: .55rem; cursor: pointer; font-weight: 800; }
+.content-module-tabs button.active { color: #fff; background: var(--green); }
+.content-module-tabs svg { width: 1rem; }
+@media(max-width:620px){.content-module-tabs{display:grid;width:100%;grid-template-columns:1fr 1fr}.content-module-tabs button{justify-content:center}}

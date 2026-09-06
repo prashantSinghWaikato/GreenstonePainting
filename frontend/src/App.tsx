@@ -3,8 +3,9 @@ import type { ChangeEvent, DragEvent, FormEvent } from 'react'
 import { AlertCircle, Building2, Check, Fence, Hammer, House, ImagePlus, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone, RotateCcw, X } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
 import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
+import { getPublishedArticles, type PublishedArticle } from './api/articles'
 import { getPublishedProjects, type PublishedProject } from './api/projects'
-import { articles, heroSlides, projects, serviceAreas, services } from './data/site'
+import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services } from './data/site'
 import ColourStudio from './ColourStudio'
 import './App.css'
 
@@ -107,6 +108,7 @@ function App() {
   const [activeHero, setActiveHero] = useState(0)
   const [activeProject, setActiveProject] = useState(0)
   const [portfolioProjects, setPortfolioProjects] = useState<PublishedProject[]>(projects.map((project) => ({ ...project, slug: project.title, highlights: [] })))
+  const [journalArticles, setJournalArticles] = useState<Array<Pick<PublishedArticle, 'title' | 'topic' | 'path' | 'publishedAt'>>>(fallbackArticles.map((article) => ({ ...article, publishedAt: new Date(article.date).toISOString() })))
   const [quoteForm, setQuoteForm] = useState(initialQuoteForm)
   const [submitting, setSubmitting] = useState(false)
   const [submissionReference, setSubmissionReference] = useState('')
@@ -128,6 +130,14 @@ function App() {
       setActiveHero((current) => (current + 1) % heroSlides.length)
     }, 6500)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    getPublishedArticles().then((published) => {
+      if (active && published.length) setJournalArticles(published.slice(0, 3))
+    }).catch(() => undefined)
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -599,7 +609,7 @@ function App() {
         </section>
 
         <section className="section insights-section" id="insights">
-          <div className="page-container"><div className="section-heading insights-heading"><div><p className="eyebrow">Advice &amp; insights</p><h2>Better decisions before<br />the first coat.</h2></div><a className="inline-link" href="/blog/">View all articles →</a></div><div className="articles-grid">{articles.map((article) => <article key={article.title}><span>{article.topic}</span><h3>{article.title}</h3><div><time>{article.date}</time><a href={article.path} aria-label={`Read ${article.title}`}>Read article ↗</a></div></article>)}</div></div>
+          <div className="page-container"><div className="section-heading insights-heading"><div><p className="eyebrow">Advice &amp; insights</p><h2>Better decisions before<br />the first coat.</h2></div><a className="inline-link" href="/blog/">View all articles →</a></div><div className="articles-grid">{journalArticles.map((article) => <article key={article.path}><span>{article.topic}</span><h3>{article.title}</h3><div><time dateTime={article.publishedAt}>{new Intl.DateTimeFormat('en-NZ', { dateStyle: 'medium', timeZone: 'Pacific/Auckland' }).format(new Date(article.publishedAt))}</time><a href={article.path} aria-label={`Read ${article.title}`}>Read article ↗</a></div></article>)}</div></div>
         </section>
 
         <section className="section privacy-section" id="privacy" aria-labelledby="privacy-heading">

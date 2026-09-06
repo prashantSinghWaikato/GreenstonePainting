@@ -1,6 +1,9 @@
-import { ArrowLeft, ArrowRight, Mail, MapPin, Paintbrush, Phone } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowLeft, ArrowRight, LoaderCircle, Mail, MapPin, Paintbrush, Phone } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
-import { blogPosts, findBlogPost } from './data/blog'
+import { getPublishedArticles, type PublishedArticle } from './api/articles'
+import { parseArticleBody, type ArticleBlock } from './articleContent'
+import { blogPosts } from './data/blog'
 import { services } from './data/site'
 import './App.css'
 import './Blog.css'
@@ -42,7 +45,34 @@ export function PublicFooter() {
   </footer>
 }
 
-function BlogIndex() {
+function fallbackArticles(): PublishedArticle[] {
+  return blogPosts.map((post) => ({
+    slug: post.path.replace(/^\//, '').replace(/\/$/, ''),
+    path: post.path,
+    title: post.title,
+    shortTitle: post.shortTitle,
+    topic: post.topic,
+    excerpt: post.excerpt,
+    body: [
+      ...post.introduction,
+      ...post.sections.flatMap((section) => [
+        `## ${section.heading}`,
+        ...(section.paragraphs ?? []),
+        ...(section.bullets ?? []).map((bullet) => `- ${bullet}`),
+      ]),
+    ].join('\n\n'),
+    readTimeMinutes: Number.parseInt(post.readTime, 10),
+    image: post.image,
+    imageAlt: post.imageAlt,
+    publishedAt: new Date(post.date).toISOString(),
+  }))
+}
+
+function articleDate(value: string) {
+  return new Intl.DateTimeFormat('en-NZ', { dateStyle: 'long', timeZone: 'Pacific/Auckland' }).format(new Date(value))
+}
+
+function BlogIndex({ posts }: { posts: PublishedArticle[] }) {
   return <>
     <section className="blog-hero">
       <div className="blog-hero-colour" aria-hidden="true"><span /><span /><span /></div>
@@ -55,10 +85,9 @@ function BlogIndex() {
       <div className="page-container">
         <div className="blog-section-heading"><div><span>Greenstone journal</span><h2 id="latest-articles">Latest articles</h2></div><p>Clear information from a working painter’s perspective.</p></div>
         <div className="blog-card-grid">
-          {blogPosts.map((post, index) => <article className="blog-card" key={post.path}>
+          {posts.map((post) => <article className="blog-card" key={post.path}>
             <a className="blog-card-image" href={post.path} aria-label={`Read ${post.title}`}><img src={post.image} alt={post.imageAlt} /><span>{post.topic}</span></a>
-            <div className="blog-card-body"><p className="blog-meta"><time>{post.date}</time><span>{post.readTime}</span></p><h3><a href={post.path}>{post.title}</a></h3><p>{post.excerpt}</p><a className="blog-read-link" href={post.path}>Read article <ArrowRight size={16} aria-hidden="true" /></a></div>
-            <span className="blog-card-index" aria-hidden="true">0{index + 1}</span>
+            <div className="blog-card-body"><p className="blog-meta"><time dateTime={post.publishedAt}>{articleDate(post.publishedAt)}</time><span>{post.readTimeMinutes} min read</span></p><h3><a href={post.path}>{post.title}</a></h3><p>{post.excerpt}</p><a className="blog-read-link" href={post.path}>Read article <ArrowRight size={16} aria-hidden="true" /></a></div>
           </article>)}
         </div>
       </div>
@@ -73,10 +102,35 @@ function BlogCallout() {
   </section>
 }
 
-function ArticlePage({ pathname }: { pathname: string }) {
-  const post = findBlogPost(pathname)
+type ArticleSection = { heading: string; blocks: ArticleBlock[] }
+
+function articleStructure(body: string) {
+  const introduction: ArticleBlock[] = []
+  const sections: ArticleSection[] = []
+  let current: ArticleSection | null = null
+  for (const block of parseArticleBody(body)) {
+    if (block.type === 'heading') {
+      current = { heading: block.text, blocks: [] }
+      sections.push(current)
+    } else if (current) current.blocks.push(block)
+    else introduction.push(block)
+  }
+  return { introduction, sections }
+}
+
+function renderBlocks(blocks: ArticleBlock[]) {
+  return blocks.map((block, index) => block.type === 'paragraph'
+    ? <p key={`${block.type}-${index}`}>{block.text}</p>
+    : block.type === 'bullets'
+      ? <ul key={`${block.type}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ul>
+      : null)
+}
+
+function ArticlePage({ pathname, posts }: { pathname: string; posts: PublishedArticle[] }) {
+  const post = posts.find((item) => item.path === pathname)
   if (!post) return <NotFound />
-  const relatedPosts = blogPosts.filter((item) => item.path !== post.path)
+  const relatedPosts = posts.filter((item) => item.path !== post.path).slice(0, 2)
+  const structure = articleStructure(post.body)
 
   return <>
     <article>
@@ -85,25 +139,24 @@ function ArticlePage({ pathname }: { pathname: string }) {
         <div className="article-hero-shade" aria-hidden="true" />
         <div className="page-container article-hero-inner">
           <a className="article-back" href="/blog/"><ArrowLeft size={15} aria-hidden="true" /> All articles</a>
-          <div className="article-title-block"><p className="article-topic">{post.topic}</p><h1>{post.title}</h1><div className="article-meta"><time>{post.date}</time><span>{post.readTime}</span><span>Greenstone Painting</span></div></div>
+          <div className="article-title-block"><p className="article-topic">{post.topic}</p><h1>{post.title}</h1><div className="article-meta"><time dateTime={post.publishedAt}>{articleDate(post.publishedAt)}</time><span>{post.readTimeMinutes} min read</span><span>Greenstone Painting</span></div></div>
         </div>
       </header>
 
       <div className="page-container article-layout">
         <aside className="article-rail" aria-label="Article summary"><span>In this guide</span><p>{post.excerpt}</p><a href="/#quote">Discuss your project <ArrowRight size={15} aria-hidden="true" /></a></aside>
         <div className="article-content">
-          <div className="article-introduction">{post.introduction.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
-          {post.sections.map((section) => <section key={section.heading}>
+          <div className="article-introduction">{renderBlocks(structure.introduction)}</div>
+          {structure.sections.map((section) => <section key={section.heading}>
             <h2>{section.heading}</h2>
-            {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            {section.bullets && <ul>{section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>}
+            {renderBlocks(section.blocks)}
           </section>)}
           <div className="article-note"><strong>Planning note</strong><p>Every property and coating system is different. We recommend a site assessment before confirming preparation, products, programme, or price.</p></div>
         </div>
       </div>
     </article>
 
-    <section className="section related-section" aria-labelledby="related-heading"><div className="page-container"><div className="related-heading"><div><p className="eyebrow">Continue reading</p><h2 id="related-heading">More from the journal</h2></div><a href="/blog/">View all articles <ArrowRight size={15} aria-hidden="true" /></a></div><div className="related-grid">{relatedPosts.map((item) => <article key={item.path}><img src={item.image} alt="" /><div><span>{item.topic}</span><h3><a href={item.path}>{item.shortTitle}</a></h3><p>{item.date}</p></div></article>)}</div></div></section>
+    {relatedPosts.length > 0 && <section className="section related-section" aria-labelledby="related-heading"><div className="page-container"><div className="related-heading"><div><p className="eyebrow">Continue reading</p><h2 id="related-heading">More from the journal</h2></div><a href="/blog/">View all articles <ArrowRight size={15} aria-hidden="true" /></a></div><div className="related-grid">{relatedPosts.map((item) => <article key={item.path}><img src={item.image} alt="" /><div><span>{item.topic}</span><h3><a href={item.path}>{item.shortTitle}</a></h3><p>{articleDate(item.publishedAt)}</p></div></article>)}</div></div></section>}
     <BlogCallout />
   </>
 }
@@ -114,5 +167,22 @@ function NotFound() {
 
 export default function Blog() {
   const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`
-  return <div className="site-shell blog-shell"><PublicHeader active="blog" /><main id="main-content">{pathname === '/blog/' ? <BlogIndex /> : <ArticlePage pathname={pathname} />}</main><PublicFooter /></div>
+  const [posts, setPosts] = useState<PublishedArticle[]>(fallbackArticles)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    getPublishedArticles()
+      .then((response) => { if (active) setPosts(response) })
+      .catch(() => { /* Existing articles remain available if the API is temporarily offline. */ })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const knownBeforeLoad = posts.some((post) => post.path === pathname)
+  return <div className="site-shell blog-shell"><PublicHeader active="blog" /><main id="main-content">{pathname === '/blog/'
+    ? <BlogIndex posts={posts} />
+    : loading && !knownBeforeLoad
+      ? <section className="blog-loading"><LoaderCircle aria-hidden="true" /><span>Loading article…</span></section>
+      : <ArticlePage pathname={pathname} posts={posts} />}</main><PublicFooter /></div>
 }

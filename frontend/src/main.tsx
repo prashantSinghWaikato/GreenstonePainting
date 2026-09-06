@@ -8,20 +8,15 @@ import ProjectsPage from './Projects.tsx'
 import ChatAssistant from './ChatAssistant.tsx'
 import AdminApp from './AdminApp.tsx'
 
-const blogPaths = new Set([
-  '/blog/',
-  '/how-painters-prepare-your-home-for-a-smooth-paint-job/',
-  '/822-2/',
-  '/wood-staining-benefits-you-need-to-take-advantage-of/',
-])
-
 const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`
 const isAdmin = pathname === '/admin/'
+const isKnownPublicPage = pathname === '/' || pathname === '/services/' || pathname === '/projects/'
+const isJournalPage = pathname === '/blog/' || (!isAdmin && !isKnownPublicPage)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <>
-      {isAdmin ? <AdminApp /> : pathname === '/services/' ? <ServicesPage /> : pathname === '/projects/' ? <ProjectsPage /> : blogPaths.has(pathname) ? <Blog /> : <App />}
+      {isAdmin ? <AdminApp /> : pathname === '/services/' ? <ServicesPage /> : pathname === '/projects/' ? <ProjectsPage /> : isJournalPage ? <Blog /> : <App />}
       {!isAdmin && <ChatAssistant />}
     </>
   </StrictMode>,
