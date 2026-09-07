@@ -79,10 +79,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/projects/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/articles/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/services/**").permitAll()
                         .requestMatchers("/api/enquiries/**", "/error").permitAll()
                         .requestMatchers("/api/admin/staff/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/content/projects/*/publication").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/content/articles/*/publication").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.PATCH, "/api/admin/content/services/*/publication").hasRole("OWNER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions

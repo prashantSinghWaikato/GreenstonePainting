@@ -1,6 +1,7 @@
 package org.greenstone.backend.persistence.repository;
 
 import org.greenstone.backend.persistence.entity.ServiceOffering;
+import org.greenstone.backend.persistence.entity.PublicationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,4 +13,6 @@ public interface ServiceOfferingRepository extends JpaRepository<ServiceOffering
     Optional<ServiceOffering> findBySlugAndActiveTrue(String slug);
     List<ServiceOffering> findAllByActiveTrueOrderByDisplayOrderAsc();
     List<ServiceOffering> findAllByOrderByDisplayOrderAsc();
+    Optional<ServiceOffering> findBySlugAndStatus(String slug, PublicationStatus status);
+    List<ServiceOffering> findAllByStatusOrderByDisplayOrderAsc(PublicationStatus status);
 }

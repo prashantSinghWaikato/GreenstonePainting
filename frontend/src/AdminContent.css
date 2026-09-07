@@ -2,4 +2,4 @@
 .content-module-tabs button { display: inline-flex; min-height: 3rem; padding: 0 1rem; color: #52616a; border: 0; background: transparent; align-items: center; gap: .55rem; cursor: pointer; font-weight: 800; }
 .content-module-tabs button.active { color: #fff; background: var(--green); }
 .content-module-tabs svg { width: 1rem; }
-@media(max-width:620px){.content-module-tabs{display:grid;width:100%;grid-template-columns:1fr 1fr}.content-module-tabs button{justify-content:center}}
+@media(max-width:620px){.content-module-tabs{display:grid;width:100%;grid-template-columns:1fr}.content-module-tabs button{justify-content:center}}

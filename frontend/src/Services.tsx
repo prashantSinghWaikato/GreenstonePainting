@@ -1,9 +1,9 @@
+import { useEffect, useState } from 'react'
 import { ArrowRight, Building2, Check, Fence, Hammer, House, PaintBucket, Paintbrush } from 'lucide-react'
 import { PublicFooter, PublicHeader } from './Blog'
+import { getPublishedServices, type PublishedService } from './api/services'
 import { services } from './data/site'
 import './Services.css'
-
-const serviceIcons = [Paintbrush, House, Building2, PaintBucket, Hammer, Fence]
 
 const serviceDetails = [
   {
@@ -68,7 +68,30 @@ const serviceDetails = [
   },
 ]
 
+const fallbackPublishedServices: PublishedService[] = serviceDetails.map((detail, index) => ({
+  ...detail,
+  summary: services.find((service) => service.slug === detail.slug)?.description ?? detail.description,
+  displayOrder: index + 1,
+}))
+
+const serviceIconBySlug: Record<string, typeof Paintbrush> = {
+  'interior-painting': Paintbrush,
+  'exterior-painting': House,
+  'commercial-painting': Building2,
+  'roof-painting': PaintBucket,
+  'new-builds-renovations': Hammer,
+  'deck-fence-staining': Fence,
+}
+
 export default function ServicesPage() {
+  const [publishedServices, setPublishedServices] = useState<PublishedService[]>(fallbackPublishedServices)
+
+  useEffect(() => {
+    let active = true
+    getPublishedServices().then((response) => { if (active) setPublishedServices(response) }).catch(() => undefined)
+    return () => { active = false }
+  }, [])
+
   return <div className="site-shell services-page-shell">
     <PublicHeader active="services" />
     <main id="main-content">
@@ -84,18 +107,18 @@ export default function ServicesPage() {
 
       <section className="section service-overview" aria-labelledby="services-overview-heading">
         <div className="page-container">
-          <div className="service-page-heading"><div><p className="eyebrow">Complete capability</p><h2 id="services-overview-heading">One accountable team.<br />Six focused services.</h2></div><p>Choose the service closest to your project. We will confirm the exact preparation, surfaces, products, and programme after discussing the property.</p></div>
+          <div className="service-page-heading"><div><p className="eyebrow">Complete capability</p><h2 id="services-overview-heading">One accountable team.<br />Focused services.</h2></div><p>Choose the service closest to your project. We will confirm the exact preparation, surfaces, products, and programme after discussing the property.</p></div>
           <div className="service-overview-grid">
-            {services.map((service, index) => {
-              const Icon = serviceIcons[index]
-              return <a href={`#${service.slug}`} className="service-overview-card" key={service.slug}><span><Icon size={24} strokeWidth={1.7} aria-hidden="true" /></span><h3>{service.title}</h3><p>{service.description}</p><strong>Explore service <ArrowRight size={15} aria-hidden="true" /></strong></a>
+            {publishedServices.map((service) => {
+              const Icon = serviceIconBySlug[service.slug] ?? Paintbrush
+              return <a href={`#${service.slug}`} className="service-overview-card" key={service.slug}><span><Icon size={24} strokeWidth={1.7} aria-hidden="true" /></span><h3>{service.title}</h3><p>{service.summary}</p><strong>Explore service <ArrowRight size={15} aria-hidden="true" /></strong></a>
             })}
           </div>
         </div>
       </section>
 
       <section className="service-detail-list" aria-label="Painting service details">
-        {serviceDetails.map((service, index) => <article className={`service-detail ${index % 2 ? 'service-detail-reverse' : ''}`} id={service.slug} key={service.slug}>
+        {publishedServices.map((service, index) => <article className={`service-detail ${index % 2 ? 'service-detail-reverse' : ''}`} id={service.slug} key={service.slug}>
           <div className="service-detail-image"><img src={service.image} alt={service.imageAlt} /><span>{service.label}</span></div>
           <div className="service-detail-copy"><p className="eyebrow">{service.label}</p><h2>{service.title}</h2><p>{service.description}</p><ul>{service.inclusions.map((item) => <li key={item}><Check size={16} strokeWidth={2} aria-hidden="true" />{item}</li>)}</ul><aside>{service.note}</aside><a href="/#quote">Request a quote for this service <ArrowRight size={16} aria-hidden="true" /></a></div>
         </article>)}

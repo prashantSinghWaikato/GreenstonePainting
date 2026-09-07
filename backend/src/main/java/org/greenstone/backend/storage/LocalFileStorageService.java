@@ -49,6 +49,11 @@ public class LocalFileStorageService implements FileStorageService {
         return storePhoto("articles/" + articleId, file);
     }
 
+    @Override
+    public StoredObject storeServiceImage(UUID serviceId, MultipartFile file) {
+        return storePhoto("services/" + serviceId, file);
+    }
+
     private StoredObject storePhoto(String directory, MultipartFile file) {
         validate(file);
         var contentType = file.getContentType().toLowerCase();

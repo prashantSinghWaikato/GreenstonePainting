@@ -5,7 +5,8 @@ import { FaFacebookF, FaInstagram } from 'react-icons/fa'
 import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
 import { getPublishedArticles, type PublishedArticle } from './api/articles'
 import { getPublishedProjects, type PublishedProject } from './api/projects'
-import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services } from './data/site'
+import { getPublishedServices } from './api/services'
+import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services as fallbackServices } from './data/site'
 import ColourStudio from './ColourStudio'
 import './App.css'
 
@@ -30,6 +31,7 @@ const initialQuoteForm: QuoteFormState = {
 }
 
 const serviceIcons = [Paintbrush, House, Building2, PaintBucket, Hammer, Fence]
+const serviceIconBySlug = new Map(fallbackServices.map((service, index) => [service.slug, serviceIcons[index]]))
 const maximumPhotoCount = 4
 const maximumPhotoSize = 5 * 1024 * 1024
 const acceptedPhotoTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
@@ -108,6 +110,7 @@ function App() {
   const [activeHero, setActiveHero] = useState(0)
   const [activeProject, setActiveProject] = useState(0)
   const [portfolioProjects, setPortfolioProjects] = useState<PublishedProject[]>(projects.map((project) => ({ ...project, slug: project.title, highlights: [] })))
+  const [services, setServices] = useState(fallbackServices)
   const [journalArticles, setJournalArticles] = useState<Array<Pick<PublishedArticle, 'title' | 'topic' | 'path' | 'publishedAt'>>>(fallbackArticles.map((article) => ({ ...article, publishedAt: new Date(article.date).toISOString() })))
   const [quoteForm, setQuoteForm] = useState(initialQuoteForm)
   const [submitting, setSubmitting] = useState(false)
@@ -130,6 +133,14 @@ function App() {
       setActiveHero((current) => (current + 1) % heroSlides.length)
     }, 6500)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    getPublishedServices().then((published) => {
+      if (active) setServices(published.map((service) => ({ slug: service.slug, code: '', title: service.title, description: service.summary })))
+    }).catch(() => undefined)
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -176,7 +187,7 @@ function App() {
     if (window.location.hash === '#quote') showQuoteForm(serviceSlug)
 
     return () => window.removeEventListener('greenstone:open-quote', handleAssistantQuote)
-  }, [])
+  }, [services])
 
   useEffect(() => () => photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl)), [])
 
@@ -421,13 +432,13 @@ function App() {
           </button>
 
           <nav id="primary-navigation" className={menuOpen ? 'primary-nav is-open' : 'primary-nav'} aria-label="Primary navigation">
-            <a href="#top" onClick={closeMenu}>Home</a>
+            <a href="/" onClick={closeMenu}>Home</a>
             <a href="/services/" onClick={closeMenu}>Services</a>
             <a href="/projects/" onClick={closeMenu}>Projects</a>
-            <a href="#about" onClick={closeMenu}>About Us</a>
-            <a href="#areas" onClick={closeMenu}>Service Areas</a>
+            <a href="/about/" onClick={closeMenu}>About Us</a>
+            <a href="/service-areas/" onClick={closeMenu}>Service Areas</a>
             <a href="/blog/" onClick={closeMenu}>Blog</a>
-            <a href="#contact" onClick={closeMenu}>Contact</a>
+            <a href="/contact/" onClick={closeMenu}>Contact</a>
           </nav>
 
         </div>
@@ -487,8 +498,8 @@ function App() {
               <div><p>Structured painting services for homes, businesses, builders, and property teams throughout the Waikato.</p><a className="inline-link" href="#quote">Discuss your requirements →</a></div>
             </div>
             <div className="services-grid">
-              {services.map((service, index) => {
-                const ServiceIcon = serviceIcons[index]
+              {services.map((service) => {
+                const ServiceIcon = serviceIconBySlug.get(service.slug) ?? Paintbrush
                 return (
                   <article className="service-card group rounded-card ring-1 ring-slate-950/5 transition duration-300 hover:-translate-y-1 hover:shadow-enterprise" key={service.slug}>
                     <div className="service-top"><span className="service-code transition duration-300 group-hover:scale-110 group-hover:bg-greenstone-500 group-hover:text-white" aria-hidden="true"><ServiceIcon size={21} strokeWidth={1.8} /></span></div>
@@ -631,10 +642,10 @@ function App() {
         <div className="page-container footer-main">
           <div className="footer-brand"><a className="brand brand-logo brand-logo-footer" href="#top" aria-label="Greenstone Painting Limited home"><img src="/images/greenstone-logo.png" alt="Greenstone Painting Limited" /></a><p>Professional residential and commercial painting throughout Waikato.</p><a className="footer-call" href="tel:+642108383831">021 083 83831</a></div>
           <div className="footer-column"><h2>Services</h2>{services.slice(0, 5).map((service) => <a href={`/services/#${service.slug}`} key={service.slug}>{service.title}</a>)}</div>
-          <div className="footer-column"><h2>Company</h2><a href="#about">About Us</a><a href="/projects/">Projects</a><a href="#areas">Service Areas</a><a href="/blog/">Blog</a><a href="#quote">Get a Quote</a></div>
+          <div className="footer-column"><h2>Company</h2><a href="/about/">About Us</a><a href="/projects/">Projects</a><a href="/service-areas/">Service Areas</a><a href="/blog/">Blog</a><a href="/contact/">Contact</a><a href="#quote">Get a Quote</a></div>
           <div className="footer-column"><h2>Contact</h2><a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a><a href="https://www.google.com/maps/search/?api=1&query=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand" target="_blank" rel="noreferrer">29 Lachlan Drive<br />Dinsdale, Hamilton</a><div className="social-row"><a className="social-instagram" href="https://www.instagram.com/greenstonepainting.nz/" target="_blank" rel="noreferrer" aria-label="Follow Greenstone Painting on Instagram"><FaInstagram size={16} aria-hidden="true" /></a><a className="social-facebook" href="https://www.facebook.com/greenstonepainting/" target="_blank" rel="noreferrer" aria-label="Visit Greenstone Painting on Facebook"><FaFacebookF size={15} aria-hidden="true" /></a></div></div>
         </div>
-        <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting Limited</span><a href="#privacy">Privacy Notice</a></div>
+        <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting Limited</span><a href="/privacy/">Privacy Notice</a></div>
       </footer>
       <ColourStudio open={colourStudioOpen} onClose={closeColourStudio} />
     </div>
