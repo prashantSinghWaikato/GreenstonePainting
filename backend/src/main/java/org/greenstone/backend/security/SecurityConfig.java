@@ -70,7 +70,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepository)
-                        .ignoringRequestMatchers("/api/enquiries/**"))
+                        .ignoringRequestMatchers("/api/enquiries/**", "/api/quotes/**"))
                 .securityContext(context -> context
                         .securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(authorize -> authorize
@@ -81,6 +81,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/articles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/services/**").permitAll()
                         .requestMatchers("/api/enquiries/**", "/error").permitAll()
+                        .requestMatchers("/api/quotes/**").permitAll()
                         .requestMatchers("/api/admin/staff/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/content/projects/*/publication").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/content/articles/*/publication").hasRole("OWNER")

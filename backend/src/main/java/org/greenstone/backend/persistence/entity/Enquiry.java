@@ -30,6 +30,17 @@ public class Enquiry extends BaseEntity {
     @Column(nullable = false, length = 30)
     private EnquiryStatus status = EnquiryStatus.NEW;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_admin_id")
+    private AdminUser assignedTo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EnquiryPriority priority = EnquiryPriority.NORMAL;
+
+    @Column(name = "follow_up_at")
+    private OffsetDateTime followUpAt;
+
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
@@ -102,6 +113,12 @@ public class Enquiry extends BaseEntity {
     public void setType(EnquiryType type) { this.type = type; }
     public EnquiryStatus getStatus() { return status; }
     public void setStatus(EnquiryStatus status) { this.status = status; }
+    public AdminUser getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(AdminUser assignedTo) { this.assignedTo = assignedTo; }
+    public EnquiryPriority getPriority() { return priority; }
+    public void setPriority(EnquiryPriority priority) { this.priority = priority; }
+    public OffsetDateTime getFollowUpAt() { return followUpAt; }
+    public void setFollowUpAt(OffsetDateTime followUpAt) { this.followUpAt = followUpAt; }
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }

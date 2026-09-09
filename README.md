@@ -29,7 +29,15 @@ npm run dev
 
 The frontend uses `http://localhost:8080` as its default API URL. Copy `frontend/.env.example` to `frontend/.env` when a different API URL is required.
 
-Development quote notifications are captured locally by Mailpit at [http://localhost:8025](http://localhost:8025). They are not delivered to a real recipient. Production email delivery requires explicit `MAIL_*`, `QUOTE_NOTIFICATION_TO`, `QUOTE_NOTIFICATION_FROM`, and `PUBLIC_BASE_URL` environment settings.
+Development quote and staff workflow notifications are captured locally by Mailpit at [http://localhost:8025](http://localhost:8025). They are not delivered to a real recipient. Assign an enquiry to a staff account or give it a due follow-up time to test the automation.
+
+To test the customer quote workflow, open an enquiry in Admin → Enquiries and select **Create quote draft**. Add pricing, save the draft, preview its PDF, then select **Email quote to customer**. Open the message in Mailpit and follow its secure link to the customer quote page, where the quote can be downloaded, accepted, or declined. Sent revisions are locked; declined or expired quotes can be copied into a new revision while the previous customer link remains read-only.
+
+The backend checks due follow-ups every minute and sends the weekday digest at 8:00 am in the `Pacific/Auckland` time zone. Staff can enable or disable assignment alerts, follow-up reminders, and the digest under Admin → Settings. Delivery failures are retried up to three times and recorded in the enquiry activity timeline.
+
+Production email delivery requires explicit `MAIL_*`, `QUOTE_NOTIFICATION_TO`, `QUOTE_NOTIFICATION_FROM`, `PUBLIC_BASE_URL`, and `FRONTEND_PUBLIC_BASE_URL` environment settings. The schedules can be overridden with `FOLLOW_UP_NOTIFICATION_CRON` and `DAILY_DIGEST_CRON`, or all workflow automation can be disabled with `NOTIFICATION_AUTOMATION_ENABLED=false`.
+
+`FRONTEND_PUBLIC_BASE_URL` must be the externally accessible frontend origin in production because it is used to construct secure customer quote links. Quote response tokens are stored only as SHA-256 hashes, expire after 90 days, and quote response pages are excluded from search indexing.
 
 ## Quote enquiry API
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Download, ExternalLink, History, Image, Inbox, LoaderCircle, Mail, MapPin, Phone, RefreshCw, Save, Search, SlidersHorizontal, StickyNote, UserRound, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, BellRing, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Download, ExternalLink, Flag, History, Image, Inbox, LoaderCircle, Mail, MapPin, Phone, RefreshCw, Save, Search, StickyNote, UserCheck, UserRound, X } from 'lucide-react'
 import {
   AdminEnquiryApiError,
   getAdminEnquiry,
@@ -11,11 +11,13 @@ import {
   type AdminEnquiryDetail,
   type AdminEnquiryFilters,
   type AdminEnquiryPage,
+  type EnquiryPriority,
   type EnquiryStatus,
 } from './api/adminEnquiries'
 import './AdminEnquiries.css'
+import AdminQuotes from './AdminQuotes'
 
-const emptyFilters: AdminEnquiryFilters = { query: '', status: '', service: '', from: '', to: '' }
+const emptyFilters: AdminEnquiryFilters = { query: '', status: '', service: '', assignment: '', priority: '', followUp: '', from: '', to: '' }
 
 const statusLabels: Record<EnquiryStatus, string> = {
   NEW: 'New',
@@ -25,6 +27,13 @@ const statusLabels: Record<EnquiryStatus, string> = {
   WON: 'Won',
   LOST: 'Lost',
   CLOSED: 'Closed',
+}
+
+const priorityLabels: Record<EnquiryPriority, string> = {
+  LOW: 'Low',
+  NORMAL: 'Normal',
+  HIGH: 'High',
+  URGENT: 'Urgent',
 }
 
 function formatDate(value: string) {
@@ -37,6 +46,25 @@ function formatDate(value: string) {
 
 function formatBytes(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function toLocalDateTimeInput(value: string | null) {
+  if (!value) return ''
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((entry) => entry.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`
+}
+
+function PriorityBadge({ priority }: { priority: EnquiryPriority }) {
+  return <span className={`enquiry-priority enquiry-priority--${priority.toLowerCase()}`}>{priorityLabels[priority]}</span>
+}
+
+function FollowUp({ value, overdue }: { value: string | null; overdue: boolean }) {
+  if (!value) return <span className="enquiry-follow-up enquiry-follow-up--empty">Not scheduled</span>
+  return <span className={`enquiry-follow-up${overdue ? ' enquiry-follow-up--overdue' : ''}`}><CalendarClock aria-hidden="true" />{overdue ? 'Overdue · ' : ''}{formatDate(value)}</span>
 }
 
 function StatusBadge({ status }: { status: EnquiryStatus }) {
@@ -88,16 +116,21 @@ function EnquiryDetail({
   onBack,
   onSessionExpired,
   onWorkflowUpdated,
+  staff,
 }: {
   enquiryId: string
   onBack: () => void
   onSessionExpired: () => void
   onWorkflowUpdated: () => void
+  staff: AdminEnquiryPage['staff']
 }) {
   const [enquiry, setEnquiry] = useState<AdminEnquiryDetail | null>(null)
   const [error, setError] = useState('')
   const [draftStatus, setDraftStatus] = useState<EnquiryStatus>('NEW')
-  const [draftNotes, setDraftNotes] = useState('')
+  const [draftOwner, setDraftOwner] = useState('')
+  const [draftPriority, setDraftPriority] = useState<EnquiryPriority>('NORMAL')
+  const [draftFollowUp, setDraftFollowUp] = useState('')
+  const [draftNote, setDraftNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [savedMessage, setSavedMessage] = useState('')
@@ -107,7 +140,10 @@ function EnquiryDetail({
   const applyDetail = useCallback((detail: AdminEnquiryDetail) => {
     setEnquiry(detail)
     setDraftStatus(detail.status)
-    setDraftNotes(detail.internalNotes ?? '')
+    setDraftOwner(detail.assignedAdminId ?? '')
+    setDraftPriority(detail.priority)
+    setDraftFollowUp(toLocalDateTimeInput(detail.followUpAt))
+    setDraftNote('')
     setConflict(false)
   }, [])
 
@@ -138,6 +174,16 @@ function EnquiryDetail({
     }
   }
 
+  async function refreshAfterQuoteChange() {
+    try {
+      applyDetail(await getAdminEnquiry(enquiryId))
+      onWorkflowUpdated()
+    } catch (caught) {
+      if (caught instanceof AdminEnquiryApiError && caught.status === 401) onSessionExpired()
+      else setSaveError(caught instanceof Error ? caught.message : 'The enquiry status could not be refreshed.')
+    }
+  }
+
   if (error) {
     return <div className="enquiry-state"><div className="admin-form-error" role="alert">{error}</div><button type="button" onClick={onBack} className="enquiry-secondary-button">Back to inbox</button></div>
   }
@@ -146,8 +192,12 @@ function EnquiryDetail({
   }
 
   const customerName = `${enquiry.firstName} ${enquiry.lastName}`
-  const normalizedNotes = draftNotes.trim()
-  const workflowChanged = draftStatus !== enquiry.status || normalizedNotes !== (enquiry.internalNotes ?? '')
+  const normalizedNote = draftNote.trim()
+  const workflowChanged = draftStatus !== enquiry.status
+    || draftOwner !== (enquiry.assignedAdminId ?? '')
+    || draftPriority !== enquiry.priority
+    || draftFollowUp !== toLocalDateTimeInput(enquiry.followUpAt)
+    || Boolean(normalizedNote)
 
   async function saveWorkflow(event?: FormEvent<HTMLFormElement>, terminalConfirmed = false) {
     event?.preventDefault()
@@ -165,7 +215,10 @@ function EnquiryDetail({
     try {
       const updated = await updateAdminEnquiryWorkflow(enquiry.id, {
         status: draftStatus,
-        internalNotes: normalizedNotes || null,
+        assignedAdminId: draftOwner || null,
+        priority: draftPriority,
+        followUpAt: draftFollowUp ? new Date(draftFollowUp).toISOString() : null,
+        newNote: normalizedNote || null,
         version: enquiry.version,
       })
       applyDetail(updated)
@@ -205,6 +258,8 @@ function EnquiryDetail({
             <p className="enquiry-message">{enquiry.message}</p>
           </section>
 
+          <AdminQuotes enquiryId={enquiry.id} onSessionExpired={onSessionExpired} onQuoteChanged={() => void refreshAfterQuoteChange()} />
+
           <section className="enquiry-detail-card">
             <div className="enquiry-card-heading"><span>Project photos</span><strong>{enquiry.attachments.length || 'None supplied'}</strong></div>
             {enquiry.attachments.length > 0 ? (
@@ -219,9 +274,10 @@ function EnquiryDetail({
             <div className="enquiry-timeline">
               {enquiry.activities.map((activity) => (
                 <article key={activity.id} className="enquiry-timeline-item">
-                  <div className="enquiry-timeline-icon">{activity.type === 'STATUS_CHANGED' ? <RefreshCw aria-hidden="true" /> : <StickyNote aria-hidden="true" />}</div>
+                  <div className={`enquiry-timeline-icon${activity.type === 'NOTIFICATION_FAILED' ? ' enquiry-timeline-icon--failed' : ''}`}>{activity.type === 'STATUS_CHANGED' ? <RefreshCw aria-hidden="true" /> : activity.type === 'ASSIGNMENT_CHANGED' ? <UserCheck aria-hidden="true" /> : activity.type === 'PRIORITY_CHANGED' ? <Flag aria-hidden="true" /> : activity.type === 'FOLLOW_UP_CHANGED' ? <CalendarClock aria-hidden="true" /> : activity.type === 'NOTIFICATION_SENT' || activity.type === 'NOTIFICATION_FAILED' ? <BellRing aria-hidden="true" /> : <StickyNote aria-hidden="true" />}</div>
                   <div>
                     <strong>{activity.summary}</strong>
+                    {activity.noteBody && <p className="enquiry-timeline-note">{activity.noteBody}</p>}
                     {activity.type === 'STATUS_CHANGED' && activity.previousStatus && activity.newStatus && (
                       <div className="enquiry-timeline-statuses"><StatusBadge status={activity.previousStatus} /><ArrowRight aria-hidden="true" /><StatusBadge status={activity.newStatus} /></div>
                     )}
@@ -242,7 +298,11 @@ function EnquiryDetail({
             <div className="enquiry-workflow-heading"><span className="admin-eyebrow">Enquiry workflow</span><History aria-hidden="true" /></div>
             <form onSubmit={saveWorkflow}>
               <label><span>Status</span><select value={draftStatus} onChange={(event) => { setDraftStatus(event.target.value as EnquiryStatus); setSavedMessage(''); setSaveError(''); setConflict(false) }}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label><span>Private internal notes</span><textarea value={draftNotes} onChange={(event) => { setDraftNotes(event.target.value); setSavedMessage(''); setSaveError(''); setConflict(false) }} maxLength={10000} rows={6} placeholder="Add follow-up details for staff only…" /><small>{draftNotes.length.toLocaleString('en-NZ')} / 10,000</small></label>
+              <label><span>Assigned to</span><select value={draftOwner} onChange={(event) => { setDraftOwner(event.target.value); setSavedMessage(''); setSaveError(''); setConflict(false) }}><option value="">Unassigned</option>{staff.map((member) => <option key={member.id} value={member.id} disabled={!member.enabled}>{member.displayName}{member.enabled ? '' : ' (inactive)'}</option>)}</select></label>
+              <label><span>Priority</span><select value={draftPriority} onChange={(event) => { setDraftPriority(event.target.value as EnquiryPriority); setSavedMessage(''); setSaveError(''); setConflict(false) }}>{Object.entries(priorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label><span>Follow-up reminder</span><input type="datetime-local" value={draftFollowUp} onChange={(event) => { setDraftFollowUp(event.target.value); setSavedMessage(''); setSaveError(''); setConflict(false) }} /></label>
+              <label><span>Add private note</span><textarea value={draftNote} onChange={(event) => { setDraftNote(event.target.value); setSavedMessage(''); setSaveError(''); setConflict(false) }} maxLength={3000} rows={5} placeholder="Add a staff-only note to the timeline…" /><small>{draftNote.length.toLocaleString('en-NZ')} / 3,000 · notes cannot be edited after saving</small></label>
+              {enquiry.internalNotes && <div className="enquiry-legacy-note"><strong>Earlier internal note</strong><p>{enquiry.internalNotes}</p></div>}
               {savedMessage && <div className="enquiry-workflow-success" role="status"><CheckCircle2 aria-hidden="true" /> {savedMessage}</div>}
               {saveError && <div className={`enquiry-workflow-error${conflict ? ' enquiry-workflow-error--conflict' : ''}`} role="alert"><AlertTriangle aria-hidden="true" /><span>{saveError}</span>{conflict && <button type="button" onClick={reloadLatest} disabled={saving}><RefreshCw aria-hidden="true" /> Reload latest</button>}</div>}
               <button type="submit" className="enquiry-save-button" disabled={!workflowChanged || saving}>{saving ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <Save aria-hidden="true" />}{saving ? 'Saving…' : workflowChanged ? 'Save workflow' : 'No changes to save'}</button>
@@ -260,6 +320,9 @@ function EnquiryDetail({
             <dl>
               <div><dt>Reference</dt><dd>{enquiry.reference}</dd></div>
               <div><dt>Service</dt><dd>{enquiry.serviceTitle || 'Not specified'}</dd></div>
+              <div><dt>Assigned to</dt><dd>{enquiry.assignedDisplayName || 'Unassigned'}</dd></div>
+              <div><dt>Priority</dt><dd><PriorityBadge priority={enquiry.priority} /></dd></div>
+              <div><dt>Follow-up</dt><dd><FollowUp value={enquiry.followUpAt} overdue={enquiry.overdue} /></dd></div>
               <div><dt>Preferred contact</dt><dd>{enquiry.contactPreference === 'EITHER' ? 'Email or phone' : enquiry.contactPreference.toLowerCase()}</dd></div>
               <div><dt>Team notification</dt><dd>{enquiry.notificationSentAt ? `Sent ${formatDate(enquiry.notificationSentAt)}` : 'Not confirmed'}</dd></div>
             </dl>
@@ -321,6 +384,15 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
     setPageNumber(0)
   }
 
+  function applyQuickFilter(changes: Partial<AdminEnquiryFilters>) {
+    const next = { ...emptyFilters, ...changes }
+    setLoading(true)
+    setError('')
+    setDraftFilters(next)
+    setFilters(next)
+    setPageNumber(0)
+  }
+
   function goToPage(nextPage: number) {
     setLoading(true)
     setError('')
@@ -334,11 +406,10 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
   }
 
   if (selectedId) {
-    return <EnquiryDetail enquiryId={selectedId} onBack={() => setSelectedId('')} onSessionExpired={onSessionExpired} onWorkflowUpdated={() => setWorkflowRevision((revision) => revision + 1)} />
+    return <EnquiryDetail enquiryId={selectedId} staff={data?.staff ?? []} onBack={() => setSelectedId('')} onSessionExpired={onSessionExpired} onWorkflowUpdated={() => setWorkflowRevision((revision) => revision + 1)} />
   }
 
   const allCount = data ? Object.values(data.statusCounts).reduce((sum, count) => sum + count, 0) : 0
-  const activeCount = data ? data.statusCounts.NEW + data.statusCounts.IN_REVIEW + data.statusCounts.CONTACTED : 0
   const hasFilters = Object.values(filters).some(Boolean)
 
   return (
@@ -349,15 +420,20 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
       </header>
 
       <div className="enquiry-metrics" aria-label="Enquiry summary">
-        <article><Inbox aria-hidden="true" /><span>New requests</span><strong>{data?.statusCounts.NEW ?? '—'}</strong></article>
-        <article><SlidersHorizontal aria-hidden="true" /><span>Active follow-up</span><strong>{data ? activeCount : '—'}</strong></article>
-        <article><UserRound aria-hidden="true" /><span>All enquiries</span><strong>{data ? allCount : '—'}</strong></article>
+        <button type="button" onClick={() => applyQuickFilter({ assignment: 'unassigned' })}><Inbox aria-hidden="true" /><span>Unassigned</span><strong>{data?.metrics.unassigned ?? '—'}</strong></button>
+        <button type="button" onClick={() => applyQuickFilter({ followUp: 'TODAY' })}><CalendarClock aria-hidden="true" /><span>Due today</span><strong>{data?.metrics.dueToday ?? '—'}</strong></button>
+        <button type="button" className="enquiry-metric-alert" onClick={() => applyQuickFilter({ followUp: 'OVERDUE' })}><AlertTriangle aria-hidden="true" /><span>Overdue</span><strong>{data?.metrics.overdue ?? '—'}</strong></button>
+        <button type="button" onClick={() => applyQuickFilter({ assignment: 'mine' })}><UserRound aria-hidden="true" /><span>My enquiries</span><strong>{data?.metrics.mine ?? '—'}</strong></button>
+        <button type="button" onClick={clearFilters}><UserCheck aria-hidden="true" /><span>All enquiries</span><strong>{data ? allCount : '—'}</strong></button>
       </div>
 
       <form className="enquiry-filters" onSubmit={applyFilters}>
         <label className="enquiry-search-field"><span>Search</span><div><Search aria-hidden="true" /><input value={draftFilters.query} onChange={(event) => setDraftFilters({ ...draftFilters, query: event.target.value })} placeholder="Name, email, phone, address or reference" /></div></label>
         <label><span>Status</span><select value={draftFilters.status} onChange={(event) => setDraftFilters({ ...draftFilters, status: event.target.value as AdminEnquiryFilters['status'] })}><option value="">All statuses</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label><span>Service</span><select value={draftFilters.service} onChange={(event) => setDraftFilters({ ...draftFilters, service: event.target.value })}><option value="">All services</option>{data?.services.map((service) => <option key={service.slug} value={service.slug}>{service.title}</option>)}</select></label>
+        <label><span>Assigned to</span><select value={draftFilters.assignment} onChange={(event) => setDraftFilters({ ...draftFilters, assignment: event.target.value })}><option value="">All staff</option><option value="mine">My enquiries</option><option value="unassigned">Unassigned</option>{data?.staff.filter((member) => member.enabled).map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}</select></label>
+        <label><span>Priority</span><select value={draftFilters.priority} onChange={(event) => setDraftFilters({ ...draftFilters, priority: event.target.value as AdminEnquiryFilters['priority'] })}><option value="">All priorities</option>{Object.entries(priorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label><span>Follow-up</span><select value={draftFilters.followUp} onChange={(event) => setDraftFilters({ ...draftFilters, followUp: event.target.value as AdminEnquiryFilters['followUp'] })}><option value="">Any follow-up</option><option value="OVERDUE">Overdue</option><option value="TODAY">Due today</option><option value="UPCOMING">Upcoming</option></select></label>
         <label><span>From</span><div className="enquiry-date-field"><input type="date" value={draftFilters.from} onChange={(event) => setDraftFilters({ ...draftFilters, from: event.target.value })} /></div></label>
         <label><span>To</span><div className="enquiry-date-field"><input type="date" value={draftFilters.to} onChange={(event) => setDraftFilters({ ...draftFilters, to: event.target.value })} /></div></label>
         <div className="enquiry-filter-actions"><button type="submit">Apply filters</button>{hasFilters && <button type="button" onClick={clearFilters} className="clear"><X aria-hidden="true" /> Clear</button>}</div>
@@ -373,14 +449,14 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
         <>
           <div className="enquiry-table-wrap">
             <table className="enquiry-table">
-              <thead><tr><th>Customer</th><th>Service</th><th>Submitted</th><th>Photos</th><th>Status</th><th><span className="sr-only">View</span></th></tr></thead>
+              <thead><tr><th>Customer</th><th>Service</th><th>Owner</th><th>Follow-up</th><th>Priority / status</th><th><span className="sr-only">View</span></th></tr></thead>
               <tbody>{data.items.map((item) => (
                 <tr key={item.id}>
                   <td><button type="button" onClick={() => setSelectedId(item.id)}><strong>{item.firstName} {item.lastName}</strong><span>{item.email}</span><small>Ref {item.reference}</small></button></td>
                   <td><strong>{item.serviceTitle || 'General enquiry'}</strong><span>{item.propertyAddress || 'Location not supplied'}</span></td>
-                  <td>{formatDate(item.createdAt)}</td>
-                  <td><span className="enquiry-photo-count"><Image aria-hidden="true" /> {item.attachmentCount}</span></td>
-                  <td><StatusBadge status={item.status} /></td>
+                  <td><strong>{item.assignedDisplayName || 'Unassigned'}</strong><span>Submitted {formatDate(item.createdAt)}</span></td>
+                  <td><FollowUp value={item.followUpAt} overdue={item.overdue} /></td>
+                  <td><div className="enquiry-table-badges"><PriorityBadge priority={item.priority} /><StatusBadge status={item.status} /></div><span className="enquiry-photo-count"><Image aria-hidden="true" /> {item.attachmentCount} photos</span></td>
                   <td><button type="button" className="enquiry-open" onClick={() => setSelectedId(item.id)} aria-label={`View enquiry from ${item.firstName} ${item.lastName}`}><ArrowRight aria-hidden="true" /></button></td>
                 </tr>
               ))}</tbody>
@@ -391,6 +467,8 @@ export default function AdminEnquiries({ onSessionExpired }: { onSessionExpired:
             <button type="button" key={item.id} onClick={() => setSelectedId(item.id)} className="enquiry-mobile-card">
               <span className="enquiry-mobile-top"><small>Ref {item.reference}</small><StatusBadge status={item.status} /></span>
               <strong>{item.firstName} {item.lastName}</strong><span>{item.serviceTitle || 'General enquiry'}</span>
+              <span className="enquiry-mobile-owner">{item.assignedDisplayName || 'Unassigned'} · <PriorityBadge priority={item.priority} /></span>
+              <FollowUp value={item.followUpAt} overdue={item.overdue} />
               <span className="enquiry-mobile-meta"><time>{formatDate(item.createdAt)}</time><span><Image aria-hidden="true" /> {item.attachmentCount}</span></span>
             </button>
           ))}</div>

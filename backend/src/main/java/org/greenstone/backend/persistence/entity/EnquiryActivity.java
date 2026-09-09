@@ -36,6 +36,9 @@ public class EnquiryActivity extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String summary;
 
+    @Column(name = "note_body", length = 3000)
+    private String noteBody;
+
     protected EnquiryActivity() {
     }
 
@@ -55,9 +58,23 @@ public class EnquiryActivity extends BaseEntity {
         this.summary = summary;
     }
 
+    public EnquiryActivity(
+            Enquiry enquiry,
+            AdminUser actor,
+            EnquiryActivityType activityType,
+            EnquiryStatus previousStatus,
+            EnquiryStatus newStatus,
+            String summary,
+            String noteBody
+    ) {
+        this(enquiry, actor, activityType, previousStatus, newStatus, summary);
+        this.noteBody = noteBody;
+    }
+
     public EnquiryActivityType getActivityType() { return activityType; }
     public EnquiryStatus getPreviousStatus() { return previousStatus; }
     public EnquiryStatus getNewStatus() { return newStatus; }
     public String getSummary() { return summary; }
+    public String getNoteBody() { return noteBody; }
     public AdminUser getActor() { return actor; }
 }

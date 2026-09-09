@@ -3,6 +3,8 @@ import { getAdminMutationHeaders } from './adminAuth'
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 export type EnquiryStatus = 'NEW' | 'IN_REVIEW' | 'CONTACTED' | 'QUOTED' | 'WON' | 'LOST' | 'CLOSED'
+export type EnquiryPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
+export type EnquiryFollowUpFilter = 'OVERDUE' | 'TODAY' | 'UPCOMING'
 
 export type AdminEnquirySummary = {
   id: string
@@ -15,6 +17,11 @@ export type AdminEnquirySummary = {
   serviceTitle: string | null
   propertyAddress: string | null
   status: EnquiryStatus
+  assignedAdminId: string | null
+  assignedDisplayName: string | null
+  priority: EnquiryPriority
+  followUpAt: string | null
+  overdue: boolean
   attachmentCount: number
   createdAt: string
   completedAt: string | null
@@ -45,10 +52,11 @@ export type AdminEnquiryDetail = Omit<AdminEnquirySummary, 'attachmentCount'> & 
 
 export type AdminEnquiryActivity = {
   id: string
-  type: 'STATUS_CHANGED' | 'NOTE_UPDATED'
+  type: 'STATUS_CHANGED' | 'NOTE_UPDATED' | 'NOTE_ADDED' | 'ASSIGNMENT_CHANGED' | 'PRIORITY_CHANGED' | 'FOLLOW_UP_CHANGED' | 'NOTIFICATION_SENT' | 'NOTIFICATION_FAILED'
   previousStatus: EnquiryStatus | null
   newStatus: EnquiryStatus | null
   summary: string
+  noteBody: string | null
   actorDisplayName: string
   createdAt: string
 }
@@ -61,12 +69,17 @@ export type AdminEnquiryPage = {
   totalPages: number
   statusCounts: Record<EnquiryStatus, number>
   services: Array<{ slug: string; title: string }>
+  staff: Array<{ id: string; displayName: string; email: string; enabled: boolean }>
+  metrics: { unassigned: number; dueToday: number; overdue: number; mine: number }
 }
 
 export type AdminEnquiryFilters = {
   query: string
   status: '' | EnquiryStatus
   service: string
+  assignment: '' | 'mine' | 'unassigned' | string
+  priority: '' | EnquiryPriority
+  followUp: '' | EnquiryFollowUpFilter
   from: string
   to: string
 }
@@ -101,6 +114,9 @@ export function listAdminEnquiries(filters: AdminEnquiryFilters, page: number, s
   if (filters.query.trim()) params.set('q', filters.query.trim())
   if (filters.status) params.set('status', filters.status)
   if (filters.service) params.set('service', filters.service)
+  if (filters.assignment) params.set('assignment', filters.assignment)
+  if (filters.priority) params.set('priority', filters.priority)
+  if (filters.followUp) params.set('followUp', filters.followUp)
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
   return request<AdminEnquiryPage>(`/api/admin/enquiries?${params}`, 'The enquiry inbox could not be loaded.')
@@ -123,7 +139,14 @@ export async function getAdminEnquiryPhoto(enquiryId: string, attachmentId: stri
 
 export async function updateAdminEnquiryWorkflow(
   enquiryId: string,
-  update: { status: EnquiryStatus; internalNotes: string | null; version: number },
+  update: {
+    status: EnquiryStatus
+    assignedAdminId: string | null
+    priority: EnquiryPriority
+    followUpAt: string | null
+    newNote: string | null
+    version: number
+  },
 ) {
   const response = await fetch(
     `${API_BASE_URL}/api/admin/enquiries/${encodeURIComponent(enquiryId)}/workflow`,

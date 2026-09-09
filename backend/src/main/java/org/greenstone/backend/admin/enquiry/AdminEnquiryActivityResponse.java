@@ -12,6 +12,7 @@ public record AdminEnquiryActivityResponse(
         EnquiryStatus previousStatus,
         EnquiryStatus newStatus,
         String summary,
+        String noteBody,
         String actorDisplayName,
         OffsetDateTime createdAt
 ) {

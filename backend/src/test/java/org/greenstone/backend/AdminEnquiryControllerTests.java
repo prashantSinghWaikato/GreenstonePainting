@@ -73,10 +73,11 @@ class AdminEnquiryControllerTests {
     private EnquiryActivityRepository activityRepository;
 
     private Enquiry newEnquiry;
+    private AdminUser officeUser;
 
     @BeforeEach
     void createEnquiries() {
-        adminUserRepository.save(new AdminUser(
+        officeUser = adminUserRepository.save(new AdminUser(
                 "office@greenstonepainting.co.nz",
                 "test-password-hash",
                 "Greenstone Office"
@@ -151,15 +152,18 @@ class AdminEnquiryControllerTests {
                         .content("""
                                 {
                                   "status": "IN_REVIEW",
-                                  "internalNotes": "Call the customer after 3 pm.",
+                                  "assignedAdminId": null,
+                                  "priority": "NORMAL",
+                                  "followUpAt": null,
+                                  "newNote": "Call the customer after 3 pm.",
                                   "version": 0
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_REVIEW"))
-                .andExpect(jsonPath("$.internalNotes").value("Call the customer after 3 pm."))
                 .andExpect(jsonPath("$.version").value(1))
                 .andExpect(jsonPath("$.activities.length()").value(2))
+                .andExpect(jsonPath("$.activities[0].noteBody").value("Call the customer after 3 pm."))
                 .andExpect(jsonPath("$.activities[0].actorDisplayName").value("Greenstone Office"));
 
         org.assertj.core.api.Assertions.assertThat(
@@ -176,7 +180,10 @@ class AdminEnquiryControllerTests {
                         .content("""
                                 {
                                   "status": "CONTACTED",
-                                  "internalNotes": null,
+                                  "assignedAdminId": null,
+                                  "priority": "NORMAL",
+                                  "followUpAt": null,
+                                  "newNote": null,
                                   "version": 99
                                 }
                                 """))
@@ -192,7 +199,7 @@ class AdminEnquiryControllerTests {
     @Test
     void requiresAuthenticationAndCsrfForWorkflowChanges() throws Exception {
         var body = """
-                {"status":"IN_REVIEW","internalNotes":null,"version":0}
+                {"status":"IN_REVIEW","assignedAdminId":null,"priority":"NORMAL","followUpAt":null,"newNote":null,"version":0}
                 """;
 
         mockMvc.perform(patch("/api/admin/enquiries/{id}/workflow", newEnquiry.getId())
@@ -206,6 +213,39 @@ class AdminEnquiryControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void assignsPrioritisesAndFiltersMyEnquiries() throws Exception {
+        mockMvc.perform(patch("/api/admin/enquiries/{id}/workflow", newEnquiry.getId())
+                        .with(user("office@greenstonepainting.co.nz").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "NEW",
+                                  "assignedAdminId": "%s",
+                                  "priority": "HIGH",
+                                  "followUpAt": "2026-09-10T09:30:00+12:00",
+                                  "newNote": null,
+                                  "version": 0
+                                }
+                                """.formatted(officeUser.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assignedAdminId").value(officeUser.getId().toString()))
+                .andExpect(jsonPath("$.assignedDisplayName").value("Greenstone Office"))
+                .andExpect(jsonPath("$.priority").value("HIGH"))
+                .andExpect(jsonPath("$.followUpAt").isNotEmpty())
+                .andExpect(jsonPath("$.activities.length()").value(3));
+
+        mockMvc.perform(get("/api/admin/enquiries")
+                        .with(user("office@greenstonepainting.co.nz").roles("ADMIN"))
+                        .param("assignment", "mine"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].firstName").value("Aroha"))
+                .andExpect(jsonPath("$.metrics.mine").value(1))
+                .andExpect(jsonPath("$.staff[0].displayName").value("Greenstone Office"));
     }
 
     @Test

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AlertTriangle, Check, CheckCircle2, Clock3, KeyRound, LoaderCircle, LockKeyhole, Plus, ShieldCheck, UserCheck, UserRound, UserX, UsersRound } from 'lucide-react'
+import { AlertTriangle, BellRing, Check, CheckCircle2, Clock3, KeyRound, LoaderCircle, LockKeyhole, MailCheck, Plus, ShieldCheck, UserCheck, UserRound, UserX, UsersRound } from 'lucide-react'
 import type { AdminSession } from './api/adminAuth'
 import {
   AdminStaffApiError,
@@ -13,6 +13,12 @@ import {
   type AdminStaffMember,
 } from './api/adminStaff'
 import './AdminSettings.css'
+import {
+  AdminNotificationApiError,
+  getAdminNotificationPreferences,
+  updateAdminNotificationPreferences,
+  type AdminNotificationPreferences,
+} from './api/adminNotifications'
 
 function formatDate(value: string | null) {
   if (!value) return 'Never'
@@ -74,6 +80,73 @@ function PasswordPanel({ onSessionExpired }: { onSessionExpired: () => void }) {
         {error && <div className="settings-error" role="alert"><AlertTriangle aria-hidden="true" /> {error}</div>}
         <button type="submit" disabled={!valid || saving}>{saving ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}{saving ? 'Changing password…' : 'Change password'}</button>
       </form>
+    </section>
+  )
+}
+
+function NotificationPreferencesPanel({ onSessionExpired }: { onSessionExpired: () => void }) {
+  const [preferences, setPreferences] = useState<AdminNotificationPreferences | null>(null)
+  const [savedPreferences, setSavedPreferences] = useState<AdminNotificationPreferences | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    let active = true
+    getAdminNotificationPreferences()
+      .then((result) => { if (active) { setPreferences(result); setSavedPreferences(result) } })
+      .catch((caught) => {
+        if (!active) return
+        if (caught instanceof AdminNotificationApiError && caught.status === 401) onSessionExpired()
+        else setError(caught instanceof Error ? caught.message : 'Notification preferences could not be loaded.')
+      })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [onSessionExpired])
+
+  const changed = Boolean(preferences && savedPreferences && JSON.stringify(preferences) !== JSON.stringify(savedPreferences))
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!preferences || !changed) return
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const updated = await updateAdminNotificationPreferences(preferences)
+      setPreferences(updated)
+      setSavedPreferences(updated)
+      setSuccess('Your notification preferences have been saved.')
+    } catch (caught) {
+      if (caught instanceof AdminNotificationApiError && caught.status === 401) onSessionExpired()
+      else setError(caught instanceof Error ? caught.message : 'Notification preferences could not be saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function toggle(key: keyof AdminNotificationPreferences) {
+    if (!preferences) return
+    setPreferences({ ...preferences, [key]: !preferences[key] })
+    setError('')
+    setSuccess('')
+  }
+
+  return (
+    <section className="settings-card settings-notification-card">
+      <header><div className="settings-icon"><BellRing aria-hidden="true" /></div><div><span className="admin-eyebrow">Your alerts</span><h2>Email notifications</h2><p>Choose which enquiry updates should reach your staff email address.</p></div></header>
+      {loading ? <div className="settings-inline-loading"><LoaderCircle className="admin-spinner" aria-hidden="true" /> Loading preferences…</div> : preferences && (
+        <form onSubmit={submit}>
+          <label className="settings-notification-option"><input type="checkbox" checked={preferences.assignmentNotificationsEnabled} onChange={() => toggle('assignmentNotificationsEnabled')} /><span><strong>New assignments</strong><small>Email me when an enquiry is assigned to me.</small></span></label>
+          <label className="settings-notification-option"><input type="checkbox" checked={preferences.followUpNotificationsEnabled} onChange={() => toggle('followUpNotificationsEnabled')} /><span><strong>Follow-up reminders</strong><small>Email me when one of my scheduled follow-ups becomes due.</small></span></label>
+          <label className="settings-notification-option"><input type="checkbox" checked={preferences.dailyDigestEnabled} onChange={() => toggle('dailyDigestEnabled')} /><span><strong>Weekday summary</strong><small>Receive an 8:00 am summary of unassigned work and my overdue follow-ups.</small></span></label>
+          {success && <div className="settings-success" role="status"><CheckCircle2 aria-hidden="true" /> {success}</div>}
+          {error && <div className="settings-error" role="alert"><AlertTriangle aria-hidden="true" /> {error}</div>}
+          <button type="submit" disabled={!changed || saving}>{saving ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <MailCheck aria-hidden="true" />}{saving ? 'Saving preferences…' : changed ? 'Save notification preferences' : 'Preferences saved'}</button>
+        </form>
+      )}
+      {!loading && error && !preferences && <div className="settings-error" role="alert"><AlertTriangle aria-hidden="true" /> {error}</div>}
     </section>
   )
 }
@@ -209,7 +282,7 @@ export default function AdminSettings({ session, onSessionExpired }: { session: 
   return (
     <section className="admin-settings">
       <header className="settings-page-heading"><div><span className="admin-eyebrow">Staff settings</span><h1>Accounts & security</h1><p>Manage secure access to Greenstone operations.</p></div><span className="settings-role-badge">{session.role === 'OWNER' ? 'Owner access' : 'Staff access'}</span></header>
-      <div className="settings-grid"><PasswordPanel onSessionExpired={onSessionExpired} />{session.role === 'OWNER' && <TeamManagement session={session} onSessionExpired={onSessionExpired} />}</div>
+      <div className="settings-grid"><PasswordPanel onSessionExpired={onSessionExpired} /><NotificationPreferencesPanel onSessionExpired={onSessionExpired} />{session.role === 'OWNER' && <TeamManagement session={session} onSessionExpired={onSessionExpired} />}</div>
       {session.role === 'STAFF' && <section className="settings-staff-notice"><UserRound aria-hidden="true" /><div><h2>Staff account</h2><p>Only Owners can create, activate or deactivate team accounts. Contact an Owner if your access details need to change.</p></div></section>}
     </section>
   )

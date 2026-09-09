@@ -12,6 +12,8 @@ public record AdminEnquiryPageResponse(
         long totalElements,
         int totalPages,
         Map<EnquiryStatus, Long> statusCounts,
-        List<AdminServiceFilterResponse> services
+        List<AdminServiceFilterResponse> services,
+        List<AdminStaffOptionResponse> staff,
+        AdminEnquiryMetricsResponse metrics
 ) {
 }

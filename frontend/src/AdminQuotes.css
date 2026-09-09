@@ -1,0 +1,101 @@
+.quote-panel { padding: clamp(1.25rem, 3vw, 2rem); color: var(--ink); border: 1px solid rgba(16,27,42,.14); background: #e8e1d7; }
+.quote-panel-state { display:flex; min-height:12rem; align-items:center; justify-content:center; gap:.7rem; color:var(--ink-soft); }
+.quote-empty { display:grid; grid-template-columns:auto 1fr auto; gap:1.2rem; align-items:center; }
+.quote-empty-icon { display:grid; width:3.2rem; height:3.2rem; color:#fff; background:var(--copper); place-items:center; }
+.quote-empty-icon svg { width:1.4rem; }
+.quote-empty h2,.quote-panel-header h2 { margin:.35rem 0; font:600 1.5rem 'Manrope',sans-serif; letter-spacing:-.025em; }
+.quote-empty p { margin:0; color:var(--ink-soft); line-height:1.6; }
+.quote-empty > button,.quote-send,.quote-secondary { display:inline-flex; min-height:3rem; padding:0 1rem; align-items:center; justify-content:center; gap:.5rem; border:1px solid var(--green); cursor:pointer; font-weight:800; }
+.quote-empty > button,.quote-send { color:#fff; background:var(--green); }
+.quote-secondary { color:var(--ink); border-color:rgba(16,27,42,.25); background:transparent; }
+.quote-empty button:disabled,.quote-panel button:disabled { cursor:not-allowed; opacity:.45; }
+.quote-empty button svg,.quote-panel button svg { width:1rem; }
+
+.quote-panel-header { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding-bottom:1.2rem; border-bottom:1px solid rgba(16,27,42,.14); }
+.quote-panel-header p { margin:0; color:var(--ink-soft); font-size:.78rem; }
+.quote-header-actions { display:flex; align-items:flex-end; gap:.6rem; }
+.quote-header-actions label { display:grid; gap:.35rem; }
+.quote-header-actions label span { color:var(--ink-soft); font-size:.65rem; font-weight:800; text-transform:uppercase; }
+.quote-header-actions select { min-height:3rem; padding:0 .75rem; border:1px solid rgba(16,27,42,.22); background:#f0e9df; }
+.quote-status { display:inline-flex; padding:.3rem .5rem; color:#4b5962; background:#d5dee1; font-size:.65rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.quote-status--sent { color:#244d63; background:#d4e4ea; }
+.quote-status--accepted { color:#28583e; background:#cfe1d5; }
+.quote-status--declined,.quote-status--expired { color:#7c2b18; background:#f2d5c9; }
+.quote-status--superseded { color:#5b5f62; background:#d7d4cf; }
+
+.quote-alert { display:flex; margin-top:1rem; padding:.8rem .9rem; gap:.55rem; align-items:flex-start; font-size:.8rem; line-height:1.45; }
+.quote-alert svg { flex:0 0 auto; width:1rem; }
+.quote-alert--success { color:#174d38; border-left:3px solid #2f8060; background:#d4e7dc; }
+.quote-alert--error { grid-column:1/-1; color:#7d2818; border-left:3px solid #c8502d; background:#f6d9cb; }
+
+.quote-editor { margin-top:1.2rem; }
+.quote-editor fieldset { margin:0; padding:0; border:0; }
+.quote-editor fieldset:disabled { opacity:.82; }
+.quote-form-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.85rem; }
+.quote-form-grid label,.quote-terms { display:grid; gap:.4rem; }
+.quote-form-grid label > span,.quote-terms > span,.quote-item label > span { color:#40505a; font-size:.68rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.quote-form-grid input,.quote-form-grid textarea,.quote-terms textarea,.quote-item input,.quote-item select { width:100%; min-width:0; padding:.75rem; color:var(--ink); border:1px solid rgba(16,27,42,.22); border-radius:0; background:#f0e9df; font:inherit; }
+.quote-form-grid input { min-height:3rem; }
+.quote-form-grid textarea,.quote-terms textarea { resize:vertical; line-height:1.55; }
+.quote-form-grid input:focus,.quote-form-grid textarea:focus,.quote-terms textarea:focus,.quote-item input:focus,.quote-item select:focus { border-color:var(--copper); box-shadow:0 0 0 3px rgba(230,111,71,.14); outline:none; }
+.quote-span { grid-column:span 2; }
+
+.quote-items-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin:1.7rem 0 .75rem; }
+.quote-items-heading h3 { margin:.3rem 0 0; font:600 1.2rem 'Manrope',sans-serif; }
+.quote-items-heading button { display:inline-flex; min-height:2.6rem; padding:0 .8rem; align-items:center; gap:.4rem; color:var(--ink); border:1px solid rgba(16,27,42,.22); background:transparent; cursor:pointer; font-weight:800; }
+.quote-items { display:grid; gap:.55rem; }
+.quote-item { display:grid; grid-template-columns:120px minmax(180px,1.6fr) 90px 90px 120px 82px 100px 38px; gap:.55rem; padding:.8rem; align-items:end; background:#d3dde0; }
+.quote-item label { display:grid; min-width:0; gap:.35rem; }
+.quote-item input,.quote-item select { min-height:2.65rem; padding:.55rem; }
+.quote-item-description { min-width:0; }
+.quote-item strong { padding-bottom:.78rem; text-align:right; font-size:.8rem; }
+.quote-item > button { display:grid; width:2.35rem; height:2.65rem; color:#8c321e; border:1px solid rgba(140,50,30,.25); background:transparent; cursor:pointer; place-items:center; }
+.quote-optional { display:flex!important; min-height:2.65rem; align-items:center; gap:.4rem!important; }
+.quote-optional input { width:1rem; min-height:1rem; accent-color:var(--green); }
+.quote-optional span { font-size:.62rem!important; }
+
+.quote-totals { display:grid; width:min(100%,26rem); margin:1rem 0 1rem auto; }
+.quote-totals > div { display:flex; padding:.65rem .8rem; justify-content:space-between; gap:1rem; border-bottom:1px solid rgba(16,27,42,.12); font-size:.8rem; }
+.quote-totals span { color:var(--ink-soft); }
+.quote-totals .quote-total-main { padding:1rem .8rem; color:var(--ink); border:0; background:var(--gold); font-size:1rem; }
+.quote-totals .quote-total-main span { color:var(--ink); font-weight:800; }
+.quote-terms { margin-top:1rem; }
+.quote-editor-actions { display:flex; margin-top:1rem; justify-content:flex-end; gap:.6rem; }
+
+.quote-history { margin-top:1.6rem; padding-top:.1rem; border-top:1px solid rgba(16,27,42,.14); }
+.quote-history article { display:grid; grid-template-columns:1.8rem 1fr; padding:.75rem 0; gap:.7rem; align-items:start; border-bottom:1px solid rgba(16,27,42,.1); }
+.quote-history article > svg { width:1rem; color:var(--copper); }
+.quote-history article div { display:grid; gap:.2rem; }
+.quote-history article strong { font-size:.78rem; }
+.quote-history article span { color:var(--ink-soft); font-size:.68rem; }
+
+.quote-confirm { position:fixed; z-index:120; inset:0; display:grid; padding:1rem; background:rgba(4,17,29,.76); place-items:center; }
+.quote-confirm section { position:relative; width:min(100%,34rem); padding:2rem; border-top:5px solid var(--gold); background:#e8e1d7; box-shadow:0 2rem 5rem rgba(0,0,0,.3); }
+.quote-confirm section > svg { width:2rem; height:2rem; margin-bottom:1rem; color:var(--copper); }
+.quote-confirm h2 { margin:.55rem 0; font:600 1.55rem/1.25 'Manrope',sans-serif; }
+.quote-confirm p { color:var(--ink-soft); line-height:1.65; }
+.quote-confirm section > div { display:flex; margin-top:1.3rem; justify-content:flex-end; gap:.6rem; }
+.quote-confirm-close { position:absolute; top:1rem; right:1rem; display:grid; width:2rem; height:2rem; border:0; background:transparent; cursor:pointer; place-items:center; }
+
+@media (max-width:1300px) {
+  .quote-item { grid-template-columns:120px minmax(180px,1fr) 90px 90px; }
+  .quote-item-description { grid-column:span 3; }
+  .quote-item strong { text-align:left; }
+}
+@media (max-width:760px) {
+  .quote-empty { grid-template-columns:auto 1fr; }
+  .quote-empty > button { grid-column:1/-1; }
+  .quote-panel-header { align-items:flex-start; flex-direction:column; }
+  .quote-header-actions { width:100%; flex-wrap:wrap; }
+  .quote-header-actions label { flex:1; }
+  .quote-form-grid { grid-template-columns:1fr; }
+  .quote-span { grid-column:auto; }
+  .quote-item { grid-template-columns:1fr 1fr; }
+  .quote-item-description { grid-column:1/-1; }
+  .quote-editor-actions { align-items:stretch; flex-direction:column; }
+}
+@media (max-width:480px) {
+  .quote-item { grid-template-columns:1fr; }
+  .quote-item-description { grid-column:auto; }
+  .quote-confirm section > div { align-items:stretch; flex-direction:column; }
+}

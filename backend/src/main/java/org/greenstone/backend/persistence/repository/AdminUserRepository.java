@@ -13,4 +13,5 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, UUID> {
     Optional<AdminUser> findByEmailIgnoreCase(String email);
     List<AdminUser> findAllByOrderByDisplayNameAsc();
     long countByRoleAndEnabledTrue(AdminRole role);
+    List<AdminUser> findAllByEnabledTrueAndDailyDigestEnabledTrueOrderByDisplayNameAsc();
 }

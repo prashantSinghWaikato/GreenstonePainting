@@ -1,6 +1,7 @@
 package org.greenstone.backend.admin.enquiry;
 
 import org.greenstone.backend.persistence.entity.EnquiryStatus;
+import org.greenstone.backend.persistence.entity.EnquiryPriority;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -35,12 +36,18 @@ public class AdminEnquiryController {
             @RequestParam(defaultValue = "") String q,
             @RequestParam(required = false) EnquiryStatus status,
             @RequestParam(required = false) String service,
+            @RequestParam(required = false) String assignment,
+            @RequestParam(required = false) EnquiryPriority priority,
+            @RequestParam(required = false) EnquiryFollowUpFilter followUp,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
     ) {
-        return adminEnquiryService.search(q, status, service, from, to, page, size);
+        return adminEnquiryService.search(
+                q, status, service, assignment, priority, followUp, from, to, page, size, authentication.getName()
+        );
     }
 
     @GetMapping("/{enquiryId}")

@@ -48,6 +48,15 @@ public class AdminUser extends BaseEntity {
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 
+    @Column(name = "assignment_notifications_enabled", nullable = false)
+    private boolean assignmentNotificationsEnabled = true;
+
+    @Column(name = "follow_up_notifications_enabled", nullable = false)
+    private boolean followUpNotificationsEnabled = true;
+
+    @Column(name = "daily_digest_enabled", nullable = false)
+    private boolean dailyDigestEnabled = true;
+
     protected AdminUser() {
     }
 
@@ -89,6 +98,15 @@ public class AdminUser extends BaseEntity {
     public OffsetDateTime getPasswordChangedAt() { return passwordChangedAt; }
     public int getFailedLoginAttempts() { return failedLoginAttempts; }
     public OffsetDateTime getLockedUntil() { return lockedUntil; }
+    public boolean isAssignmentNotificationsEnabled() { return assignmentNotificationsEnabled; }
+    public boolean isFollowUpNotificationsEnabled() { return followUpNotificationsEnabled; }
+    public boolean isDailyDigestEnabled() { return dailyDigestEnabled; }
+
+    public void setNotificationPreferences(boolean assignment, boolean followUp, boolean dailyDigest) {
+        this.assignmentNotificationsEnabled = assignment;
+        this.followUpNotificationsEnabled = followUp;
+        this.dailyDigestEnabled = dailyDigest;
+    }
 
     public boolean isLocked() {
         return lockedUntil != null && lockedUntil.isAfter(OffsetDateTime.now(ZoneOffset.UTC));

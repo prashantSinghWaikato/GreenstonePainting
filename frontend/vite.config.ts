@@ -11,6 +11,7 @@ export default defineConfig({
       input: {
         home: fileURLToPath(new URL('./index.html', import.meta.url)),
         admin: fileURLToPath(new URL('./admin/index.html', import.meta.url)),
+        quote: fileURLToPath(new URL('./quote/index.html', import.meta.url)),
         services: fileURLToPath(new URL('./services/index.html', import.meta.url)),
         projects: fileURLToPath(new URL('./projects/index.html', import.meta.url)),
         about: fileURLToPath(new URL('./about/index.html', import.meta.url)),

@@ -6,18 +6,22 @@ import org.greenstone.backend.persistence.entity.Enquiry;
 import org.greenstone.backend.persistence.entity.EnquiryActivity;
 import org.greenstone.backend.persistence.entity.EnquiryActivityType;
 import org.greenstone.backend.persistence.entity.EnquiryStatus;
+import org.greenstone.backend.persistence.entity.EnquiryPriority;
+import org.greenstone.backend.persistence.entity.AdminUser;
 import org.greenstone.backend.persistence.repository.AdminUserRepository;
 import org.greenstone.backend.persistence.repository.EnquiryActivityRepository;
 import org.greenstone.backend.persistence.repository.EnquiryAttachmentRepository;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.ServiceOfferingRepository;
 import org.greenstone.backend.storage.FileStorageService;
+import org.greenstone.backend.notification.EnquiryAssignedEvent;
 import org.greenstone.backend.web.ResourceNotFoundException;
 import org.greenstone.backend.web.WorkflowConflictException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -27,7 +31,10 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AdminEnquiryService {
@@ -40,6 +47,7 @@ public class AdminEnquiryService {
     private final FileStorageService fileStorageService;
     private final EnquiryActivityRepository activityRepository;
     private final AdminUserRepository adminUserRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminEnquiryService(
             EnquiryRepository enquiryRepository,
@@ -47,7 +55,8 @@ public class AdminEnquiryService {
             ServiceOfferingRepository serviceOfferingRepository,
             FileStorageService fileStorageService,
             EnquiryActivityRepository activityRepository,
-            AdminUserRepository adminUserRepository
+            AdminUserRepository adminUserRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.enquiryRepository = enquiryRepository;
         this.attachmentRepository = attachmentRepository;
@@ -55,6 +64,7 @@ public class AdminEnquiryService {
         this.fileStorageService = fileStorageService;
         this.activityRepository = activityRepository;
         this.adminUserRepository = adminUserRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -62,15 +72,25 @@ public class AdminEnquiryService {
             String query,
             EnquiryStatus status,
             String serviceSlug,
+            String assignment,
+            EnquiryPriority priority,
+            EnquiryFollowUpFilter followUp,
             LocalDate from,
             LocalDate to,
             int requestedPage,
-            int requestedSize
+            int requestedSize,
+            String actorEmail
     ) {
+        var actor = adminUserRepository.findByEmailIgnoreCase(actorEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Staff account is no longer available."));
+        var assignedAdminId = resolveAssignment(assignment, actor.getId());
         var pageNumber = Math.max(0, requestedPage);
         var pageSize = Math.min(50, Math.max(1, requestedSize));
         var pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        var result = enquiryRepository.findAll(specification(query, status, serviceSlug, from, to), pageRequest);
+        var result = enquiryRepository.findAll(
+                specification(query, status, serviceSlug, assignedAdminId, assignment, priority, followUp, from, to),
+                pageRequest
+        );
 
         var ids = result.getContent().stream().map(Enquiry::getId).toList();
         var attachmentCounts = new HashMap<UUID, Long>();
@@ -88,6 +108,11 @@ public class AdminEnquiryService {
         var services = serviceOfferingRepository.findAllByOrderByDisplayOrderAsc().stream()
                 .map(service -> new AdminServiceFilterResponse(service.getSlug(), service.getTitle()))
                 .toList();
+        var staff = adminUserRepository.findAllByOrderByDisplayNameAsc().stream()
+                .map(user -> new AdminStaffOptionResponse(
+                        user.getId(), user.getDisplayName(), user.getEmail(), user.isEnabled()
+                ))
+                .toList();
         var items = result.getContent().stream()
                 .map(enquiry -> toSummary(enquiry, attachmentCounts.getOrDefault(enquiry.getId(), 0L)))
                 .toList();
@@ -99,7 +124,9 @@ public class AdminEnquiryService {
                 result.getTotalElements(),
                 result.getTotalPages(),
                 statusCounts,
-                services
+                services,
+                staff,
+                metrics(actor.getId())
         );
     }
 
@@ -125,17 +152,30 @@ public class AdminEnquiryService {
         var actor = adminUserRepository.findByEmailIgnoreCase(actorEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Staff account is no longer available."));
         var previousStatus = enquiry.getStatus();
-        var previousNotes = normalizeNotes(enquiry.getInternalNotes());
-        var updatedNotes = normalizeNotes(request.internalNotes());
+        var previousAssignee = enquiry.getAssignedTo();
+        var updatedAssignee = request.assignedAdminId() == null ? null : adminUserRepository
+                .findById(request.assignedAdminId())
+                .filter(AdminUser::isEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose an active staff member."));
+        var previousPriority = enquiry.getPriority();
+        var previousFollowUp = enquiry.getFollowUpAt();
+        var newNote = normalizeNote(request.newNote());
         var statusChanged = previousStatus != request.status();
-        var notesChanged = !java.util.Objects.equals(previousNotes, updatedNotes);
+        var assignmentChanged = !Objects.equals(
+                previousAssignee == null ? null : previousAssignee.getId(),
+                updatedAssignee == null ? null : updatedAssignee.getId()
+        );
+        var priorityChanged = previousPriority != request.priority();
+        var followUpChanged = !Objects.equals(previousFollowUp, request.followUpAt());
 
-        if (!statusChanged && !notesChanged) {
+        if (!statusChanged && !assignmentChanged && !priorityChanged && !followUpChanged && newNote == null) {
             return toDetail(enquiry);
         }
 
         enquiry.setStatus(request.status());
-        enquiry.setInternalNotes(updatedNotes);
+        enquiry.setAssignedTo(updatedAssignee);
+        enquiry.setPriority(request.priority());
+        enquiry.setFollowUpAt(request.followUpAt());
         try {
             enquiryRepository.flush();
         } catch (org.springframework.orm.ObjectOptimisticLockingFailureException exception) {
@@ -152,17 +192,55 @@ public class AdminEnquiryService {
                     "Status changed from " + statusLabel(previousStatus) + " to " + statusLabel(request.status()) + "."
             ));
         }
-        if (notesChanged) {
+        if (assignmentChanged) {
             activityRepository.save(new EnquiryActivity(
                     enquiry,
                     actor,
-                    EnquiryActivityType.NOTE_UPDATED,
+                    EnquiryActivityType.ASSIGNMENT_CHANGED,
                     null,
                     null,
-                    updatedNotes == null ? "Internal notes cleared." : "Internal notes updated."
+                    updatedAssignee == null
+                            ? "Assignment removed."
+                            : "Assigned to " + updatedAssignee.getDisplayName() + "."
+            ));
+        }
+        if (priorityChanged) {
+            activityRepository.save(new EnquiryActivity(
+                    enquiry,
+                    actor,
+                    EnquiryActivityType.PRIORITY_CHANGED,
+                    null,
+                    null,
+                    "Priority changed from " + priorityLabel(previousPriority) + " to " + priorityLabel(request.priority()) + "."
+            ));
+        }
+        if (followUpChanged) {
+            activityRepository.save(new EnquiryActivity(
+                    enquiry,
+                    actor,
+                    EnquiryActivityType.FOLLOW_UP_CHANGED,
+                    null,
+                    null,
+                    request.followUpAt() == null ? "Follow-up reminder removed." : "Follow-up reminder scheduled."
+            ));
+        }
+        if (newNote != null) {
+            activityRepository.save(new EnquiryActivity(
+                    enquiry,
+                    actor,
+                    EnquiryActivityType.NOTE_ADDED,
+                    null,
+                    null,
+                    "Private note added.",
+                    newNote
             ));
         }
         activityRepository.flush();
+        if (assignmentChanged && updatedAssignee != null) {
+            eventPublisher.publishEvent(new EnquiryAssignedEvent(
+                    enquiry.getId(), updatedAssignee.getId(), enquiry.getVersion()
+            ));
+        }
         return toDetail(enquiry);
     }
 
@@ -184,7 +262,10 @@ public class AdminEnquiryService {
                         activity.getPreviousStatus(),
                         activity.getNewStatus(),
                         activity.getSummary(),
-                        activity.getActor().getDisplayName(),
+                        activity.getNoteBody(),
+                        isNotificationActivity(activity.getActivityType())
+                                ? "Notification service"
+                                : activity.getActor().getDisplayName(),
                         activity.getCreatedAt()
                 ))
                 .toList();
@@ -196,6 +277,11 @@ public class AdminEnquiryService {
                 enquiry.getVersion(),
                 enquiry.getType(),
                 enquiry.getStatus(),
+                enquiry.getAssignedTo() == null ? null : enquiry.getAssignedTo().getId(),
+                enquiry.getAssignedTo() == null ? null : enquiry.getAssignedTo().getDisplayName(),
+                enquiry.getPriority(),
+                enquiry.getFollowUpAt(),
+                isOverdue(enquiry),
                 enquiry.getFirstName(),
                 enquiry.getLastName(),
                 enquiry.getEmail(),
@@ -234,6 +320,10 @@ public class AdminEnquiryService {
             String query,
             EnquiryStatus status,
             String serviceSlug,
+            UUID assignedAdminId,
+            String assignment,
+            EnquiryPriority priority,
+            EnquiryFollowUpFilter followUp,
             LocalDate from,
             LocalDate to
     ) {
@@ -258,6 +348,17 @@ public class AdminEnquiryService {
             }
             if (serviceSlug != null && !serviceSlug.isBlank()) {
                 predicates.add(builder.equal(root.join("service").get("slug"), serviceSlug.trim()));
+            }
+            if ("unassigned".equalsIgnoreCase(assignment)) {
+                predicates.add(builder.isNull(root.get("assignedTo")));
+            } else if (assignedAdminId != null) {
+                predicates.add(builder.equal(root.get("assignedTo").get("id"), assignedAdminId));
+            }
+            if (priority != null) {
+                predicates.add(builder.equal(root.get("priority"), priority));
+            }
+            if (followUp != null) {
+                addFollowUpPredicates(predicates, root, builder, followUp);
             }
             if (from != null) {
                 var fromTime = OffsetDateTime.ofInstant(from.atStartOfDay(BUSINESS_TIME_ZONE).toInstant(), BUSINESS_TIME_ZONE);
@@ -284,6 +385,11 @@ public class AdminEnquiryService {
                 service == null ? null : service.getTitle(),
                 enquiry.getPropertyAddress(),
                 enquiry.getStatus(),
+                enquiry.getAssignedTo() == null ? null : enquiry.getAssignedTo().getId(),
+                enquiry.getAssignedTo() == null ? null : enquiry.getAssignedTo().getDisplayName(),
+                enquiry.getPriority(),
+                enquiry.getFollowUpAt(),
+                isOverdue(enquiry),
                 attachmentCount,
                 enquiry.getCreatedAt(),
                 enquiry.getCompletedAt()
@@ -298,11 +404,100 @@ public class AdminEnquiryService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
-    private String normalizeNotes(String notes) {
+    private String normalizeNote(String notes) {
         if (notes == null || notes.isBlank()) {
             return null;
         }
         return notes.trim();
+    }
+
+    private UUID resolveAssignment(String assignment, UUID actorId) {
+        if (assignment == null || assignment.isBlank() || "unassigned".equalsIgnoreCase(assignment)) {
+            return null;
+        }
+        if ("mine".equalsIgnoreCase(assignment)) {
+            return actorId;
+        }
+        try {
+            return UUID.fromString(assignment);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The staff assignment filter is invalid.");
+        }
+    }
+
+    private AdminEnquiryMetricsResponse metrics(UUID actorId) {
+        var unassigned = enquiryRepository.count((root, query, builder) -> builder.and(
+                activeStatus(root, builder), builder.isNull(root.get("assignedTo"))
+        ));
+        var dueToday = enquiryRepository.count((root, query, builder) -> {
+            var bounds = todayBounds();
+            return builder.and(activeStatus(root, builder),
+                    builder.greaterThanOrEqualTo(root.get("followUpAt"), bounds[0]),
+                    builder.lessThan(root.get("followUpAt"), bounds[1]));
+        });
+        var overdue = enquiryRepository.count((root, query, builder) -> builder.and(
+                activeStatus(root, builder),
+                builder.lessThan(root.get("followUpAt"), OffsetDateTime.now(BUSINESS_TIME_ZONE))
+        ));
+        var mine = enquiryRepository.count((root, query, builder) -> builder.and(
+                activeStatus(root, builder), builder.equal(root.get("assignedTo").get("id"), actorId)
+        ));
+        return new AdminEnquiryMetricsResponse(unassigned, dueToday, overdue, mine);
+    }
+
+    private void addFollowUpPredicates(
+            ArrayList<Predicate> predicates,
+            jakarta.persistence.criteria.Root<Enquiry> root,
+            jakarta.persistence.criteria.CriteriaBuilder builder,
+            EnquiryFollowUpFilter followUp
+    ) {
+        predicates.add(activeStatus(root, builder));
+        var bounds = todayBounds();
+        switch (followUp) {
+            case OVERDUE -> predicates.add(builder.lessThan(root.get("followUpAt"), OffsetDateTime.now(BUSINESS_TIME_ZONE)));
+            case TODAY -> {
+                predicates.add(builder.greaterThanOrEqualTo(root.get("followUpAt"), bounds[0]));
+                predicates.add(builder.lessThan(root.get("followUpAt"), bounds[1]));
+            }
+            case UPCOMING -> predicates.add(builder.greaterThanOrEqualTo(root.get("followUpAt"), bounds[1]));
+        }
+    }
+
+    private Predicate activeStatus(
+            jakarta.persistence.criteria.Root<Enquiry> root,
+            jakarta.persistence.criteria.CriteriaBuilder builder
+    ) {
+        return root.get("status").in(
+                EnquiryStatus.NEW, EnquiryStatus.IN_REVIEW, EnquiryStatus.CONTACTED, EnquiryStatus.QUOTED
+        );
+    }
+
+    private OffsetDateTime[] todayBounds() {
+        var today = LocalDate.now(BUSINESS_TIME_ZONE);
+        return new OffsetDateTime[]{
+                OffsetDateTime.ofInstant(today.atStartOfDay(BUSINESS_TIME_ZONE).toInstant(), BUSINESS_TIME_ZONE),
+                OffsetDateTime.ofInstant(today.plusDays(1).atStartOfDay(BUSINESS_TIME_ZONE).toInstant(), BUSINESS_TIME_ZONE)
+        };
+    }
+
+    private boolean isOverdue(Enquiry enquiry) {
+        return enquiry.getFollowUpAt() != null
+                && isActive(enquiry.getStatus())
+                && enquiry.getFollowUpAt().isBefore(OffsetDateTime.now(BUSINESS_TIME_ZONE));
+    }
+
+    private boolean isActive(EnquiryStatus status) {
+        return status == EnquiryStatus.NEW || status == EnquiryStatus.IN_REVIEW
+                || status == EnquiryStatus.CONTACTED || status == EnquiryStatus.QUOTED;
+    }
+
+    private String priorityLabel(EnquiryPriority priority) {
+        return priority.name().substring(0, 1) + priority.name().substring(1).toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isNotificationActivity(EnquiryActivityType type) {
+        return type == EnquiryActivityType.NOTIFICATION_SENT
+                || type == EnquiryActivityType.NOTIFICATION_FAILED;
     }
 
     private String statusLabel(EnquiryStatus status) {
