@@ -57,6 +57,9 @@ public class AdminUser extends BaseEntity {
     @Column(name = "daily_digest_enabled", nullable = false)
     private boolean dailyDigestEnabled = true;
 
+    @Column(name = "job_notifications_enabled", nullable = false)
+    private boolean jobNotificationsEnabled = true;
+
     protected AdminUser() {
     }
 
@@ -101,11 +104,17 @@ public class AdminUser extends BaseEntity {
     public boolean isAssignmentNotificationsEnabled() { return assignmentNotificationsEnabled; }
     public boolean isFollowUpNotificationsEnabled() { return followUpNotificationsEnabled; }
     public boolean isDailyDigestEnabled() { return dailyDigestEnabled; }
+    public boolean isJobNotificationsEnabled() { return jobNotificationsEnabled; }
 
     public void setNotificationPreferences(boolean assignment, boolean followUp, boolean dailyDigest) {
         this.assignmentNotificationsEnabled = assignment;
         this.followUpNotificationsEnabled = followUp;
         this.dailyDigestEnabled = dailyDigest;
+    }
+
+    public void setNotificationPreferences(boolean assignment, boolean followUp, boolean dailyDigest, boolean jobs) {
+        setNotificationPreferences(assignment, followUp, dailyDigest);
+        this.jobNotificationsEnabled = jobs;
     }
 
     public boolean isLocked() {

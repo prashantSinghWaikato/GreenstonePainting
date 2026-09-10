@@ -27,6 +27,8 @@ Thumbs.db
 **/node_modules/
 **/dist/
 **/dist-ssr/
+**/playwright-report/
+**/test-results/
 
 # Logs and temporary files
 logs/

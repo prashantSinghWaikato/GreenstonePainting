@@ -29,9 +29,29 @@ npm run dev
 
 The frontend uses `http://localhost:8080` as its default API URL. Copy `frontend/.env.example` to `frontend/.env` when a different API URL is required.
 
+## Automated full-stack test
+
+The Playwright integration test starts an isolated Spring Boot API on port `18080`, a Vite frontend on port `15173`, and a fresh in-memory H2 database. It submits a customer quote through the website, signs into the staff portal, and verifies that the same enquiry is available in the admin inbox. It does not use the development PostgreSQL database or Mailpit.
+
+Install the browser once, then run the test from the frontend directory:
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
+Use `npm run test:e2e:headed` to watch the browser journey locally.
+
 Development quote and staff workflow notifications are captured locally by Mailpit at [http://localhost:8025](http://localhost:8025). They are not delivered to a real recipient. Assign an enquiry to a staff account or give it a due follow-up time to test the automation.
 
 To test the customer quote workflow, open an enquiry in Admin → Enquiries and select **Create quote draft**. Add pricing, save the draft, preview its PDF, then select **Email quote to customer**. Open the message in Mailpit and follow its secure link to the customer quote page, where the quote can be downloaded, accepted, or declined. Sent revisions are locked; declined or expired quotes can be copied into a new revision while the previous customer link remains read-only.
+
+After the customer accepts, reopen that quote in Admin → Enquiries and select **Create or open job**. The job inherits the customer, property, service, accepted scope, provisional dates, and enquiry assignee. Use Admin → Jobs to schedule the work, assign a crew member, move it through planned, scheduled, in-progress, on-hold, completed, or cancelled states, record site instructions and private notes, and upload before, progress, or completed photos. The activity timeline records operational changes, and completed or cancelled jobs cannot be accidentally reopened.
+
+Jobs can be viewed as a list or monthly calendar. Assignment, schedule and status changes email the assigned staff member, and a deduplicated reminder is sent the day before work starts. These development emails appear in Mailpit. Delivery failures are retried up to three times and appear in the job activity timeline. Each staff member can turn job alerts on or off under Admin → Settings.
+
+Before a job can be completed, staff must finish its six-point site checklist and record the customer's walkthrough sign-off name. A completed job can then create one invoice. Admin → Invoices supports PDF download, due dates, sent/part-paid/paid/void status, payment amounts and references. Admin → Reports summarizes live enquiry demand, accepted work, jobs by stage, invoiced value, collections, outstanding balances and overdue invoices. Payment tracking is manual in this version; no payment gateway or bank feed is connected.
 
 The backend checks due follow-ups every minute and sends the weekday digest at 8:00 am in the `Pacific/Auckland` time zone. Staff can enable or disable assignment alerts, follow-up reminders, and the digest under Admin → Settings. Delivery failures are retried up to three times and recorded in the enquiry activity timeline.
 

@@ -19,6 +19,10 @@ public class NotificationDelivery extends BaseEntity {
     @JoinColumn(name = "enquiry_id")
     private Enquiry enquiry;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_id")
+    private PaintingJob job;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "recipient_admin_id", nullable = false)
     private AdminUser recipient;
@@ -56,6 +60,10 @@ public class NotificationDelivery extends BaseEntity {
         this.deduplicationKey = deduplicationKey;
     }
 
+    public NotificationDelivery(PaintingJob job, AdminUser recipient, NotificationType type, String deduplicationKey) {
+        this.job = job; this.recipient = recipient; this.type = type; this.deduplicationKey = deduplicationKey;
+    }
+
     public void recordSent(OffsetDateTime now) {
         attemptCount += 1;
         lastAttemptAt = now;
@@ -72,6 +80,7 @@ public class NotificationDelivery extends BaseEntity {
     }
 
     public Enquiry getEnquiry() { return enquiry; }
+    public PaintingJob getJob() { return job; }
     public AdminUser getRecipient() { return recipient; }
     public NotificationType getType() { return type; }
     public String getDeduplicationKey() { return deduplicationKey; }

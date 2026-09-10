@@ -1,17 +1,37 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowRight, FileText, Inbox, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Settings, ShieldCheck } from 'lucide-react'
+import { ArrowRight, BriefcaseBusiness, CalendarDays, ChartNoAxesCombined, FileText, Inbox, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, ReceiptText, Settings, ShieldCheck } from 'lucide-react'
 import { getAdminSession, signInAdmin, signOutAdmin, type AdminSession } from './api/adminAuth'
 import AdminEnquiries from './AdminEnquiries'
 import AdminContent from './AdminContent'
 import AdminSettings from './AdminSettings'
+import AdminJobs from './AdminJobs'
+import { getJobOverview, type JobOverview } from './api/adminJobs'
+import AdminInvoices from './AdminInvoices'
+import AdminReports from './AdminReports'
 import './AdminApp.css'
 
-type AdminView = 'overview' | 'enquiries' | 'content' | 'settings'
+type AdminView = 'overview' | 'enquiries' | 'jobs' | 'invoices' | 'reports' | 'content' | 'settings'
 
 function viewFromLocation(): AdminView {
   const section = new URLSearchParams(window.location.search).get('section')
-  return section === 'enquiries' || section === 'content' || section === 'settings' ? section : 'overview'
+  return section === 'enquiries' || section === 'jobs' || section === 'invoices' || section === 'reports' || section === 'content' || section === 'settings' ? section : 'overview'
+}
+
+function AdminOverview({ session, onNavigate, onSessionExpired }: { session: AdminSession; onNavigate: (view: AdminView) => void; onSessionExpired: () => void }) {
+  const [jobs, setJobs] = useState<JobOverview | null>(null)
+  useEffect(() => { getJobOverview().then(setJobs).catch((error) => { if (error && typeof error === 'object' && 'status' in error && error.status === 401) onSessionExpired() }) }, [onSessionExpired])
+  return <>
+    <div className="admin-page-heading"><span className="admin-eyebrow">Overview</span><h1>Today across Greenstone.</h1><p>Move customer enquiries into accepted quotes, then keep scheduled painting work and the team in view.</p></div>
+    <div className="admin-status-grid">
+      <article className="admin-status-card admin-status-card--active"><span>Access</span><ShieldCheck /><h2>Staff session active</h2><p>Signed in as {session.email}</p></article>
+      <button type="button" className="admin-status-card admin-status-card--button" onClick={() => onNavigate('enquiries')}><span>Sales pipeline</span><Inbox /><h2>Open enquiry inbox</h2><p>Follow up requests, prepare quotes and record customer decisions.</p></button>
+      <button type="button" className="admin-status-card admin-status-card--button" onClick={() => onNavigate('jobs')}><span>Operations</span><BriefcaseBusiness /><h2>{jobs ? `${jobs.metrics.scheduled + jobs.metrics.inProgress} active jobs` : 'Painting jobs'}</h2><p>Plan dates, assign the crew and record progress from site.</p></button>
+    </div>
+    <section className="admin-jobs-overview"><header><div><span className="admin-eyebrow">Forward schedule</span><h2>Upcoming painting work</h2></div><button onClick={() => onNavigate('jobs')}>View all jobs <ArrowRight /></button></header>
+      {!jobs ? <div className="admin-overview-loading"><LoaderCircle className="admin-spinner" /> Loading schedule…</div> : jobs.upcoming.length ? <div>{jobs.upcoming.map((job) => <button key={job.id} onClick={() => { window.location.href = `/admin/?section=jobs&job=${job.id}` }}><CalendarDays /><span><strong>{job.customerName}</strong><small>{job.title} · {job.propertyAddress || 'Address pending'}</small></span><time>{job.scheduledStartDate ? new Intl.DateTimeFormat('en-NZ', { dateStyle: 'medium' }).format(new Date(`${job.scheduledStartDate}T00:00:00`)) : 'Unscheduled'}</time><ArrowRight /></button>)}</div> : <p className="admin-overview-empty">No upcoming jobs are scheduled yet. Accepted quotes can be converted into jobs from the enquiry workspace.</p>}
+    </section>
+  </>
 }
 
 function StaffLogin({ onAuthenticated }: { onAuthenticated: (session: AdminSession) => void }) {
@@ -130,6 +150,9 @@ function AdminWorkspace({
         <nav aria-label="Staff portal">
           <button type="button" onClick={() => onNavigate('overview')} className={view === 'overview' ? 'active' : ''} aria-current={view === 'overview' ? 'page' : undefined}><LayoutDashboard aria-hidden="true" /> Overview</button>
           <button type="button" onClick={() => onNavigate('enquiries')} className={view === 'enquiries' ? 'active' : ''} aria-current={view === 'enquiries' ? 'page' : undefined}><Inbox aria-hidden="true" /> Enquiries</button>
+          <button type="button" onClick={() => onNavigate('jobs')} className={view === 'jobs' ? 'active' : ''} aria-current={view === 'jobs' ? 'page' : undefined}><BriefcaseBusiness aria-hidden="true" /> Jobs</button>
+          <button type="button" onClick={() => onNavigate('invoices')} className={view === 'invoices' ? 'active' : ''} aria-current={view === 'invoices' ? 'page' : undefined}><ReceiptText aria-hidden="true" /> Invoices</button>
+          <button type="button" onClick={() => onNavigate('reports')} className={view === 'reports' ? 'active' : ''} aria-current={view === 'reports' ? 'page' : undefined}><ChartNoAxesCombined aria-hidden="true" /> Reports</button>
           <button type="button" onClick={() => onNavigate('content')} className={view === 'content' ? 'active' : ''} aria-current={view === 'content' ? 'page' : undefined}><FileText aria-hidden="true" /> Content</button>
           <button type="button" onClick={() => onNavigate('settings')} className={view === 'settings' ? 'active' : ''} aria-current={view === 'settings' ? 'page' : undefined}><Settings aria-hidden="true" /> Settings</button>
         </nav>
@@ -152,45 +175,17 @@ function AdminWorkspace({
           {signOutError && <div className="admin-form-error" role="alert">{signOutError}</div>}
           {view === 'enquiries' ? (
             <AdminEnquiries onSessionExpired={onSignedOut} />
+          ) : view === 'jobs' ? (
+            <AdminJobs onSessionExpired={onSignedOut} />
+          ) : view === 'invoices' ? (
+            <AdminInvoices onSessionExpired={onSignedOut} />
+          ) : view === 'reports' ? (
+            <AdminReports onSessionExpired={onSignedOut} />
           ) : view === 'content' ? (
             <AdminContent session={session} onSessionExpired={onSignedOut} />
           ) : view === 'settings' ? (
             <AdminSettings session={session} onSessionExpired={onSignedOut} />
-          ) : (
-            <>
-              <div className="admin-page-heading">
-                <span className="admin-eyebrow">Overview</span>
-                <h1>Your secure workspace is ready.</h1>
-                <p>Review new quote requests and customer project information from the staff-only enquiry inbox.</p>
-              </div>
-
-              <div className="admin-status-grid">
-                <article className="admin-status-card admin-status-card--active">
-                  <span>Access</span>
-                  <ShieldCheck aria-hidden="true" />
-                  <h2>Staff session active</h2>
-                  <p>Signed in as {session.email}</p>
-                </article>
-                <button type="button" className="admin-status-card admin-status-card--button" onClick={() => onNavigate('enquiries')}>
-                  <span>Available now</span>
-                  <Inbox aria-hidden="true" />
-                  <h2>Open enquiry inbox</h2>
-                  <p>Search requests, review project details and securely view customer photos.</p>
-                </button>
-                <button type="button" className="admin-status-card admin-status-card--button" onClick={() => onNavigate('content')}>
-                  <span>Available now</span>
-                  <FileText aria-hidden="true" />
-                  <h2>Website content</h2>
-                  <p>Create project drafts, manage images and control what is published on the customer website.</p>
-                </button>
-              </div>
-
-              <section className="admin-next-panel">
-                <div><span className="admin-eyebrow">Inbox connected</span><h2>Customer requests in one place</h2></div>
-                <p>Move enquiries through the team workflow, keep internal notes beside each request, and control staff access from Settings.</p>
-              </section>
-            </>
-          )}
+          ) : <AdminOverview session={session} onNavigate={onNavigate} onSessionExpired={onSignedOut} />}
         </section>
       </main>
     </div>

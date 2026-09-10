@@ -6,6 +6,7 @@ import org.greenstone.backend.persistence.entity.EnquiryAttachment;
 import org.greenstone.backend.persistence.entity.AdminUser;
 import org.greenstone.backend.web.NotificationDeliveryException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -17,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Service
+@Profile("!e2e")
 public class EmailEnquiryNotifier implements EnquiryNotifier {
 
     private final JavaMailSender mailSender;

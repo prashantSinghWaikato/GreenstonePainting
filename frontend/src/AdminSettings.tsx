@@ -135,11 +135,12 @@ function NotificationPreferencesPanel({ onSessionExpired }: { onSessionExpired: 
 
   return (
     <section className="settings-card settings-notification-card">
-      <header><div className="settings-icon"><BellRing aria-hidden="true" /></div><div><span className="admin-eyebrow">Your alerts</span><h2>Email notifications</h2><p>Choose which enquiry updates should reach your staff email address.</p></div></header>
+      <header><div className="settings-icon"><BellRing aria-hidden="true" /></div><div><span className="admin-eyebrow">Your alerts</span><h2>Email notifications</h2><p>Choose which enquiry and painting-job updates should reach your staff email address.</p></div></header>
       {loading ? <div className="settings-inline-loading"><LoaderCircle className="admin-spinner" aria-hidden="true" /> Loading preferences…</div> : preferences && (
         <form onSubmit={submit}>
           <label className="settings-notification-option"><input type="checkbox" checked={preferences.assignmentNotificationsEnabled} onChange={() => toggle('assignmentNotificationsEnabled')} /><span><strong>New assignments</strong><small>Email me when an enquiry is assigned to me.</small></span></label>
           <label className="settings-notification-option"><input type="checkbox" checked={preferences.followUpNotificationsEnabled} onChange={() => toggle('followUpNotificationsEnabled')} /><span><strong>Follow-up reminders</strong><small>Email me when one of my scheduled follow-ups becomes due.</small></span></label>
+          <label className="settings-notification-option"><input type="checkbox" checked={preferences.jobNotificationsEnabled} onChange={() => toggle('jobNotificationsEnabled')} /><span><strong>Job operations</strong><small>Email me about assigned jobs, schedule or status changes, and next-day starts.</small></span></label>
           <label className="settings-notification-option"><input type="checkbox" checked={preferences.dailyDigestEnabled} onChange={() => toggle('dailyDigestEnabled')} /><span><strong>Weekday summary</strong><small>Receive an 8:00 am summary of unassigned work and my overdue follow-ups.</small></span></label>
           {success && <div className="settings-success" role="status"><CheckCircle2 aria-hidden="true" /> {success}</div>}
           {error && <div className="settings-error" role="alert"><AlertTriangle aria-hidden="true" /> {error}</div>}

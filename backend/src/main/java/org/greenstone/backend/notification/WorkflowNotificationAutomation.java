@@ -23,9 +23,14 @@ public class WorkflowNotificationAutomation {
         service.deliverAssignment(event);
     }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void jobChanged(JobChangedEvent event) { service.deliverJobEvent(event); }
+
     @Scheduled(cron = "${app.notification.follow-up-cron:0 * * * * *}", zone = "Pacific/Auckland")
     public void followUps() {
         service.deliverDueFollowUps();
+        service.deliverJobReminders();
         service.retryFailures();
     }
 

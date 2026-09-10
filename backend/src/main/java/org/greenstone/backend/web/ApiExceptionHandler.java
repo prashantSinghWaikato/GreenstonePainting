@@ -130,4 +130,14 @@ public class ApiExceptionHandler {
                 java.util.Map.of()
         ));
     }
+
+    @ExceptionHandler(JobValidationException.class)
+    public ResponseEntity<ApiError> handleJobValidation(JobValidationException exception) {
+        return ResponseEntity.badRequest().body(new ApiError(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                HttpStatus.BAD_REQUEST.value(),
+                exception.getMessage(),
+                java.util.Map.of()
+        ));
+    }
 }

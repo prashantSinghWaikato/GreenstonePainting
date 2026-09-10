@@ -6,6 +6,7 @@ export type AdminNotificationPreferences = {
   assignmentNotificationsEnabled: boolean
   followUpNotificationsEnabled: boolean
   dailyDigestEnabled: boolean
+  jobNotificationsEnabled: boolean
 }
 
 export class AdminNotificationApiError extends Error {

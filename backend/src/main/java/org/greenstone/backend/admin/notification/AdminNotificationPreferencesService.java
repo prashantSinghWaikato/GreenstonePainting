@@ -28,7 +28,8 @@ public class AdminNotificationPreferencesService {
         user.setNotificationPreferences(
                 request.assignmentNotificationsEnabled(),
                 request.followUpNotificationsEnabled(),
-                request.dailyDigestEnabled()
+                request.dailyDigestEnabled(),
+                request.jobNotificationsEnabled()
         );
         userRepository.flush();
         return response(user);
@@ -45,7 +46,8 @@ public class AdminNotificationPreferencesService {
         return new AdminNotificationPreferencesResponse(
                 user.isAssignmentNotificationsEnabled(),
                 user.isFollowUpNotificationsEnabled(),
-                user.isDailyDigestEnabled()
+                user.isDailyDigestEnabled(),
+                user.isJobNotificationsEnabled()
         );
     }
 }

@@ -45,7 +45,8 @@ class AdminNotificationPreferencesControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.assignmentNotificationsEnabled").value(true))
                 .andExpect(jsonPath("$.followUpNotificationsEnabled").value(true))
-                .andExpect(jsonPath("$.dailyDigestEnabled").value(true));
+                .andExpect(jsonPath("$.dailyDigestEnabled").value(true))
+                .andExpect(jsonPath("$.jobNotificationsEnabled").value(true));
 
         mockMvc.perform(patch("/api/admin/account/notifications")
                         .with(user("alerts@greenstonepainting.co.nz").roles("ADMIN"))
@@ -55,13 +56,15 @@ class AdminNotificationPreferencesControllerTests {
                                 {
                                   "assignmentNotificationsEnabled": false,
                                   "followUpNotificationsEnabled": true,
-                                  "dailyDigestEnabled": false
+                                  "dailyDigestEnabled": false,
+                                  "jobNotificationsEnabled": false
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.assignmentNotificationsEnabled").value(false))
                 .andExpect(jsonPath("$.followUpNotificationsEnabled").value(true))
-                .andExpect(jsonPath("$.dailyDigestEnabled").value(false));
+                .andExpect(jsonPath("$.dailyDigestEnabled").value(false))
+                .andExpect(jsonPath("$.jobNotificationsEnabled").value(false));
     }
 
     @Test
@@ -76,7 +79,8 @@ class AdminNotificationPreferencesControllerTests {
                                 {
                                   "assignmentNotificationsEnabled": true,
                                   "followUpNotificationsEnabled": true,
-                                  "dailyDigestEnabled": true
+                                  "dailyDigestEnabled": true,
+                                  "jobNotificationsEnabled": true
                                 }
                                 """))
                 .andExpect(status().isForbidden());

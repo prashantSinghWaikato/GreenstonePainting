@@ -41,3 +41,11 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.register('e2eBootRun', org.springframework.boot.gradle.tasks.run.BootRun) {
+    group = 'verification'
+    description = 'Runs the backend with the isolated end-to-end test profile.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'org.greenstone.backend.BackendApplication'
+    systemProperty 'spring.profiles.active', 'e2e'
+}

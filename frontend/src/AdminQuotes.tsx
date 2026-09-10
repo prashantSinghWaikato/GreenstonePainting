@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AlertTriangle, CheckCircle2, Clock3, Download, FilePlus2, LoaderCircle, Mail, Plus, RefreshCw, Save, Send, Trash2, X } from 'lucide-react'
+import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Clock3, Download, FilePlus2, LoaderCircle, Mail, Plus, RefreshCw, Save, Send, Trash2, X } from 'lucide-react'
 import {
-  AdminQuoteApiError,
   createAdminQuote,
   createQuoteRevision,
   downloadAdminQuotePdf,
@@ -16,6 +15,7 @@ import {
   type SaveAdminQuote,
 } from './api/adminQuotes'
 import './AdminQuotes.css'
+import { createJobFromQuote } from './api/adminJobs'
 
 type Draft = Omit<SaveAdminQuote, 'version'>
 
@@ -65,7 +65,7 @@ export default function AdminQuotes({ enquiryId, onSessionExpired, onQuoteChange
   const [confirmSend, setConfirmSend] = useState(false)
 
   const handleError = useCallback((caught: unknown, fallback: string) => {
-    if (caught instanceof AdminQuoteApiError && caught.status === 401) onSessionExpired()
+    if (caught && typeof caught === 'object' && 'status' in caught && caught.status === 401) onSessionExpired()
     else setError(caught instanceof Error ? caught.message : fallback)
   }, [onSessionExpired])
 
@@ -182,6 +182,16 @@ export default function AdminQuotes({ enquiryId, onSessionExpired, onQuoteChange
     finally { setBusy('') }
   }
 
+  async function createJob() {
+    if (!quote) return
+    setBusy('job'); setError(''); setSuccess('')
+    try {
+      const job = await createJobFromQuote(quote.id)
+      window.location.href = `/admin/?section=jobs&job=${job.id}`
+    } catch (caught) { handleError(caught, 'The job could not be created.') }
+    finally { setBusy('') }
+  }
+
   async function downloadPdf() {
     if (!quote) return
     setBusy('pdf'); setError('')
@@ -252,7 +262,7 @@ export default function AdminQuotes({ enquiryId, onSessionExpired, onQuoteChange
         </fieldset>
 
         <div className="quote-editor-actions">
-          {editable ? <><button type="submit" disabled={!dirty || Boolean(busy)} className="quote-secondary">{busy === 'save' ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <Save aria-hidden="true" />}{dirty ? 'Save draft' : 'Draft saved'}</button><button type="button" onClick={() => setConfirmSend(true)} disabled={dirty || totals.total <= 0 || Boolean(busy)} className="quote-send"><Send aria-hidden="true" /> Email quote to customer</button></> : quote.status !== 'ACCEPTED' && quote.status !== 'SUPERSEDED' && <button type="button" onClick={revise} disabled={Boolean(busy)} className="quote-send">{busy === 'revision' ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />} Create new revision</button>}
+          {editable ? <><button type="submit" disabled={!dirty || Boolean(busy)} className="quote-secondary">{busy === 'save' ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <Save aria-hidden="true" />}{dirty ? 'Save draft' : 'Draft saved'}</button><button type="button" onClick={() => setConfirmSend(true)} disabled={dirty || totals.total <= 0 || Boolean(busy)} className="quote-send"><Send aria-hidden="true" /> Email quote to customer</button></> : quote.status === 'ACCEPTED' ? <button type="button" onClick={createJob} disabled={Boolean(busy)} className="quote-send">{busy === 'job' ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <BriefcaseBusiness aria-hidden="true" />} Create or open job</button> : quote.status !== 'SUPERSEDED' && <button type="button" onClick={revise} disabled={Boolean(busy)} className="quote-send">{busy === 'revision' ? <LoaderCircle className="admin-spinner" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />} Create new revision</button>}
         </div>
       </form>
 

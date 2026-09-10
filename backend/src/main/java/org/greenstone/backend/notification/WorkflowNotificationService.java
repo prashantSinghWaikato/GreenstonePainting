@@ -7,10 +7,16 @@ import org.greenstone.backend.persistence.entity.EnquiryActivityType;
 import org.greenstone.backend.persistence.entity.NotificationDelivery;
 import org.greenstone.backend.persistence.entity.NotificationDeliveryStatus;
 import org.greenstone.backend.persistence.entity.NotificationType;
+import org.greenstone.backend.persistence.entity.PaintingJob;
+import org.greenstone.backend.persistence.entity.JobStatus;
+import org.greenstone.backend.persistence.entity.JobActivity;
+import org.greenstone.backend.persistence.entity.JobActivityType;
 import org.greenstone.backend.persistence.repository.AdminUserRepository;
 import org.greenstone.backend.persistence.repository.EnquiryActivityRepository;
 import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.greenstone.backend.persistence.repository.NotificationDeliveryRepository;
+import org.greenstone.backend.persistence.repository.PaintingJobRepository;
+import org.greenstone.backend.persistence.repository.JobActivityRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,19 +35,28 @@ public class WorkflowNotificationService {
     private final NotificationDeliveryRepository deliveryRepository;
     private final EnquiryActivityRepository activityRepository;
     private final EnquiryNotifier notifier;
+    private final PaintingJobRepository jobRepository;
+    private final JobActivityRepository jobActivityRepository;
+    private final JobNotifier jobNotifier;
 
     public WorkflowNotificationService(
             EnquiryRepository enquiryRepository,
             AdminUserRepository userRepository,
             NotificationDeliveryRepository deliveryRepository,
             EnquiryActivityRepository activityRepository,
-            EnquiryNotifier notifier
+            EnquiryNotifier notifier,
+            PaintingJobRepository jobRepository,
+            JobActivityRepository jobActivityRepository,
+            JobNotifier jobNotifier
     ) {
         this.enquiryRepository = enquiryRepository;
         this.userRepository = userRepository;
         this.deliveryRepository = deliveryRepository;
         this.activityRepository = activityRepository;
         this.notifier = notifier;
+        this.jobRepository = jobRepository;
+        this.jobActivityRepository = jobActivityRepository;
+        this.jobNotifier = jobNotifier;
     }
 
     @Transactional
@@ -74,6 +89,25 @@ public class WorkflowNotificationService {
             attempt(null, recipient, NotificationType.DAILY_DIGEST, key,
                     () -> notifier.sendDailyDigest(recipient, unassignedCount, overdue), "Daily digest");
         }
+    }
+
+    @Transactional
+    public void deliverJobEvent(JobChangedEvent event) {
+        var job = jobRepository.findById(event.jobId()).orElse(null);
+        var recipient = userRepository.findById(event.recipientId()).orElse(null);
+        if (job == null || recipient == null || !recipient.isEnabled() || !recipient.isJobNotificationsEnabled()) return;
+        attemptJob(job, recipient, event.type(), event.key());
+    }
+
+    @Transactional
+    public void deliverJobReminders() {
+        var tomorrow = LocalDate.now(BUSINESS_TIME_ZONE).plusDays(1);
+        jobRepository.findAll().stream()
+                .filter(job -> job.getScheduledStartDate() != null && job.getScheduledStartDate().equals(tomorrow))
+                .filter(job -> job.getStatus() != JobStatus.CANCELLED && job.getStatus() != JobStatus.COMPLETED)
+                .filter(job -> job.getAssignedTo() != null)
+                .forEach(job -> attemptJob(job, job.getAssignedTo(), NotificationType.JOB_REMINDER,
+                        job.getId() + ":reminder:" + tomorrow));
     }
 
     @Transactional
@@ -127,7 +161,22 @@ public class WorkflowNotificationService {
                     ), "Daily digest");
                 }
             }
+            case JOB_ASSIGNMENT, JOB_SCHEDULE, JOB_STATUS, JOB_REMINDER -> {
+                var job = delivery.getJob();
+                if (job != null && recipient.isJobNotificationsEnabled()
+                        && job.getAssignedTo() != null && job.getAssignedTo().getId().equals(recipient.getId())) {
+                    attemptExisting(delivery, () -> jobNotifier.send(job, recipient, delivery.getType()), "Job update");
+                }
+            }
         }
+    }
+
+    private void attemptJob(PaintingJob job, AdminUser recipient, NotificationType type, String key) {
+        if (!recipient.isEnabled() || !recipient.isJobNotificationsEnabled()) return;
+        var existing = deliveryRepository.findByRecipientIdAndTypeAndDeduplicationKey(recipient.getId(), type, key);
+        if (existing.isPresent() && existing.get().getStatus() == NotificationDeliveryStatus.FAILED) return;
+        var delivery = existing.orElseGet(() -> deliveryRepository.save(new NotificationDelivery(job, recipient, type, key)));
+        attemptExisting(delivery, () -> jobNotifier.send(job, recipient, type), "Job update");
     }
 
     private void attempt(
@@ -167,10 +216,12 @@ public class WorkflowNotificationService {
     }
 
     private void recordActivity(NotificationDelivery delivery, EnquiryActivityType type, String summary) {
-        if (delivery.getEnquiry() == null) return;
-        activityRepository.save(new EnquiryActivity(
-                delivery.getEnquiry(), delivery.getRecipient(), type, null, null, summary
-        ));
+        if (delivery.getEnquiry() != null) activityRepository.save(new EnquiryActivity(
+                delivery.getEnquiry(), delivery.getRecipient(), type, null, null, summary));
+        if (delivery.getJob() != null) jobActivityRepository.save(new JobActivity(
+                delivery.getJob(), delivery.getRecipient(),
+                type == EnquiryActivityType.NOTIFICATION_SENT ? JobActivityType.NOTIFICATION_SENT : JobActivityType.NOTIFICATION_FAILED,
+                summary, null));
     }
 
     private String safeMessage(RuntimeException exception) {
