@@ -26,7 +26,24 @@ export async function getPublishedProjects(): Promise<PublishedProject[]> {
   const projects = (await response.json()) as PublishedProjectResponse[]
   return projects.map((project) => ({
     ...project,
-    image: resolveContentUrl(project.imageUrl),
-    alt: project.imageAlt,
+    category: project.slug === 'new-build-interior-package' && project.category === 'New Builds & Renovations'
+      ? 'Interior Painting'
+      : project.slug === 'residential-transformation' && project.category === 'Exterior Painting'
+        ? 'New Builds & Renovations'
+        : project.category,
+    image: project.slug === 'contemporary-exterior-renewal' && project.imageUrl === '/images/greenstone-exterior.webp'
+      ? '/images/projects/featured-townhouse-exterior.webp'
+      : project.slug === 'new-build-interior-package' && project.imageUrl === '/images/greenstone-kitchen.webp'
+        ? '/images/projects/featured-interior-bedroom.webp'
+        : project.slug === 'residential-transformation' && project.imageUrl === '/images/greenstone-before-after.jpg'
+          ? '/images/projects/featured-twilight-exterior.webp'
+          : resolveContentUrl(project.imageUrl),
+    alt: project.slug === 'contemporary-exterior-renewal' && project.imageUrl === '/images/greenstone-exterior.webp'
+      ? 'White and charcoal multi-unit townhouse exterior'
+      : project.slug === 'new-build-interior-package' && project.imageUrl === '/images/greenstone-kitchen.webp'
+        ? 'Freshly painted white bedroom with decorative ceiling panels'
+        : project.slug === 'residential-transformation' && project.imageUrl === '/images/greenstone-before-after.jpg'
+          ? 'Twilight view of two freshly painted modern homes'
+          : project.imageAlt,
   }))
 }

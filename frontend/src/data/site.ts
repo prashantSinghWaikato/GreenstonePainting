@@ -20,9 +20,9 @@ export type HeroSlide = {
 }
 
 export const heroSlides: HeroSlide[] = [
-  { image: '/images/greenstone-exterior.webp', label: 'Exterior painting · Waikato' },
-  { image: '/images/greenstone-kitchen.webp', label: 'New build finish · Hamilton' },
-  { image: '/images/greenstone-bedroom.webp', label: 'Interior painting · Waikato' },
+  { image: '/images/projects/new-builds-04.webp', label: 'New build exteriors' },
+  { image: '/images/projects/new-builds-09.webp', label: 'Interior finishes' },
+  { image: '/images/projects/staining-04.webp', label: 'Exterior timber staining' },
 ]
 
 export const services: Service[] = [
@@ -69,24 +69,24 @@ export const projects: Project[] = [
     title: 'Contemporary Exterior Renewal',
     category: 'Exterior painting',
     location: 'Hamilton, Waikato',
-    image: '/images/greenstone-exterior.webp',
-    alt: 'Freshly painted modern residential exterior',
+    image: '/images/projects/featured-townhouse-exterior.webp',
+    alt: 'White and charcoal multi-unit townhouse exterior',
     summary: 'A precise multi-surface exterior finish designed to complement modern architectural lines.',
   },
   {
     title: 'New Build Interior Package',
-    category: 'New build finish',
+    category: 'Interior Painting',
     location: 'Waikato',
-    image: '/images/greenstone-kitchen.webp',
-    alt: 'Modern kitchen and living area with crisp painted surfaces',
+    image: '/images/projects/featured-interior-bedroom.webp',
+    alt: 'Freshly painted white bedroom with decorative ceiling panels',
     summary: 'A coordinated interior package with clean transitions across walls, ceilings, trim, and cabinetry.',
   },
   {
     title: 'Residential Transformation',
-    category: 'Before & after',
+    category: 'New Builds & Renovations',
     location: 'Hamilton',
-    image: '/images/greenstone-before-after.jpg',
-    alt: 'Before and after exterior painting transformation',
+    image: '/images/projects/featured-twilight-exterior.webp',
+    alt: 'Twilight view of two freshly painted modern homes',
     summary: 'A complete exterior refresh that modernised the property while improving surface protection.',
   },
 ]

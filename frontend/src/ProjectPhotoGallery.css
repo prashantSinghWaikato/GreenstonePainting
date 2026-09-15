@@ -1,0 +1,19 @@
+.project-photo-gallery { background: #d7dedf; color: #10263a; }
+.project-photo-gallery h2 { max-width: 850px; margin: 12px 0 20px; font: 500 clamp(2.4rem, 4.5vw, 4.8rem)/1.05 'Manrope', sans-serif; letter-spacing: -.045em; }
+.photo-gallery-intro { max-width: 680px; line-height: 1.7; }
+.photo-category-links { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 42px; }
+.photo-category-links a { padding: 12px 18px; border: 1px solid #617884; border-radius: 30px; color: #10263a; text-decoration: none; font-weight: 700; }
+.photo-category-links a:hover { background: #10263a; color: #fff; }
+.photo-category { scroll-margin-top: 130px; margin-top: 48px; }
+.photo-category h3 { margin-bottom: 18px; font: 600 clamp(1.5rem, 2.5vw, 2.2rem) 'Manrope', sans-serif; }
+.project-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.project-photo-grid button { display: block; padding: 0; overflow: hidden; border: 1px solid #a7b6bd; border-radius: 12px; background: #10263a; color: #fff; text-align: left; cursor: zoom-in; }
+.project-photo-grid img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.project-photo-grid button:focus-visible, .photo-category-links a:focus-visible, .photo-dialog-close:focus-visible { outline: 3px solid #c44f30; outline-offset: 4px; }
+.project-photo-dialog { width: min(1100px, 94vw); max-height: 94dvh; margin: auto; padding: 18px; border: 0; border-radius: 12px; background: #10263a; color: white; }
+.project-photo-dialog::backdrop { background: rgb(4 12 20 / 88%); }
+.photo-dialog-close { display: block; margin: 0 0 12px auto; padding: 10px 20px; border: 0; border-radius: 6px; background: #e0a64d; color: #10263a; font-weight: 700; cursor: pointer; }
+.project-photo-dialog figure { margin: 0; }
+.project-photo-dialog img { display: block; width: 100%; height: min(72dvh, 850px); object-fit: contain; }
+@media (max-width: 900px) { .project-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 550px) { .project-photo-grid { grid-template-columns: 1fr; } .photo-category-links a { padding: 10px 14px; font-size: .85rem; } }

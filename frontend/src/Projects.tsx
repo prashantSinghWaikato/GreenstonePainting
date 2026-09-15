@@ -4,6 +4,7 @@ import { PublicFooter, PublicHeader } from './Blog'
 import { projects } from './data/site'
 import { getPublishedProjects, type PublishedProject } from './api/projects'
 import './Projects.css'
+import ProjectPhotoGallery from './ProjectPhotoGallery'
 
 const fallbackProjects: PublishedProject[] = projects.map((project) => ({ ...project, slug: project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), highlights: [project.category, 'Preparation-led finish', 'Quality-controlled outcome'] }))
 
@@ -20,7 +21,7 @@ export default function ProjectsPage() {
     <PublicHeader active="projects" />
     <main id="main-content">
       <section className="projects-page-hero">
-        <div className="projects-hero-image" aria-hidden="true"><img src="/images/greenstone-before-after.jpg" alt="" /></div>
+        <div className="projects-hero-image" aria-hidden="true"><img src="/images/projects/new-builds-04.webp" alt="" /></div>
         <div className="projects-hero-overlay" aria-hidden="true" />
         <div className="page-container projects-hero-inner">
           <div><p className="eyebrow eyebrow-light">Selected painting work</p><h1>See the finish.<br /><span>Understand the work.</span></h1></div>
@@ -30,6 +31,8 @@ export default function ProjectsPage() {
       </section>
 
       <section className="section projects-intro" aria-labelledby="projects-heading"><div className="page-container projects-intro-layout"><div><p className="eyebrow">Project portfolio</p><h2 id="projects-heading">Selected outcomes.<br />Clearly presented.</h2></div><div><p>Each project starts with the property and the surfaces in front of us. Preparation, product selection, access, and sequencing are defined around the actual scope—not a one-size-fits-all process.</p><a href="/services/">Explore our painting services <ArrowRight size={15} aria-hidden="true" /></a></div></div></section>
+
+      <ProjectPhotoGallery />
 
       <section className="projects-gallery" aria-label="Featured painting projects">
         {portfolio.map((project, index) => <article className={`portfolio-project portfolio-project-${(index % 3) + 1}`} id={project.slug} key={project.slug}>

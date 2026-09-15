@@ -13,8 +13,8 @@ const serviceDetails = [
     description: 'A controlled interior painting service for occupied homes, empty properties, renovations, and new spaces. We plan protection, preparation, product selection, and sequencing around the surfaces and how the property is used.',
     inclusions: ['Walls and ceilings', 'Doors, trim, and skirtings', 'Surface repairs and preparation', 'Colour and sheen guidance'],
     note: 'Suitable for single-room refreshes through to complete interior repaints.',
-    image: '/images/greenstone-bedroom.webp',
-    imageAlt: 'Freshly painted residential bedroom interior',
+    image: '/images/projects/feature-walls-02.webp',
+    imageAlt: 'Bedroom with a dark painted panel feature wall',
   },
   {
     slug: 'exterior-painting',
@@ -23,8 +23,8 @@ const serviceDetails = [
     description: 'Exterior finishes need to suit the substrate, exposure, existing coating condition, and local environment. We assess the property before recommending preparation and a coating approach for the work.',
     inclusions: ['Weatherboards and cladding', 'Eaves, fascia, and exterior trim', 'Cleaning and surface preparation', 'Compatible exterior coating systems'],
     note: 'Designed for residential exteriors and selected commercial properties across Waikato.',
-    image: '/images/greenstone-exterior.webp',
-    imageAlt: 'Professionally finished modern house exterior',
+    image: '/images/projects/renovation-03.webp',
+    imageAlt: 'Weatherboard home during exterior renovation',
   },
   {
     slug: 'commercial-painting',
@@ -33,8 +33,8 @@ const serviceDetails = [
     description: 'Clear scope, scheduling, and communication are essential in operational spaces. We coordinate painting work around access, other trades, business requirements, and the surfaces included in the agreed project.',
     inclusions: ['Offices and retail spaces', 'Property and facility refreshes', 'Interior and exterior surfaces', 'Planned staging and handover'],
     note: 'Project timing and product requirements are confirmed during assessment.',
-    image: '/images/greenstone-kitchen.webp',
-    imageAlt: 'Clean modern interior showing precise painted finishes',
+    image: '/images/projects/commercial-01.webp',
+    imageAlt: 'Blue and white commercial building exterior',
   },
   {
     slug: 'roof-painting',
@@ -43,8 +43,8 @@ const serviceDetails = [
     description: 'Roof painting begins with checking the roof material, condition, access, and whether repairs or specialist work are needed before coating. The final scope is based on a site inspection rather than appearance alone.',
     inclusions: ['Condition and access review', 'Cleaning and preparation', 'Coating compatibility checks', 'Planned application process'],
     note: 'Availability depends on roof condition, material, pitch, and safe access.',
-    image: '/images/greenstone-before-after.jpg',
-    imageAlt: 'Residential exterior painting transformation',
+    image: '',
+    imageAlt: '',
   },
   {
     slug: 'new-builds-renovations',
@@ -53,8 +53,8 @@ const serviceDetails = [
     description: 'Painting for a build or renovation needs to integrate with the wider programme. We clarify surfaces, finish levels, sequencing, access, and touch-up expectations so the painting package can move cleanly toward handover.',
     inclusions: ['New residential interiors', 'Renovation painting packages', 'Coordination with builders and trades', 'Final review and touch-ups'],
     note: 'Scope can be tailored to the build stage and agreed finish schedule.',
-    image: '/images/greenstone-kitchen.webp',
-    imageAlt: 'Finished kitchen and living area in a new residential build',
+    image: '/images/projects/new-builds-01.webp',
+    imageAlt: 'Open-plan living area with white walls',
   },
   {
     slug: 'deck-fence-staining',
@@ -63,8 +63,8 @@ const serviceDetails = [
     description: 'Timber condition, species, previous finishes, and exposure affect how a stain will look and perform. We assess these factors before selecting preparation and a suitable transparent, semi-transparent, or solid finish.',
     inclusions: ['Decks and exterior timber', 'Fences and screening', 'Cleaning and preparation', 'Stain colour and finish selection'],
     note: 'A test area may be recommended because timber absorbs stain differently.',
-    image: '/images/greenstone-exterior.webp',
-    imageAlt: 'Residential exterior with finished timber elements',
+    image: '/images/projects/staining-07.webp',
+    imageAlt: 'Timber deck during stain application',
   },
 ]
 
@@ -73,6 +73,12 @@ const fallbackPublishedServices: PublishedService[] = serviceDetails.map((detail
   summary: services.find((service) => service.slug === detail.slug)?.description ?? detail.description,
   displayOrder: index + 1,
 }))
+
+const orderServices = (items: PublishedService[]) => [...items].sort((a, b) => {
+  if (a.slug === 'roof-painting') return 1
+  if (b.slug === 'roof-painting') return -1
+  return a.displayOrder - b.displayOrder
+})
 
 const serviceIconBySlug: Record<string, typeof Paintbrush> = {
   'interior-painting': Paintbrush,
@@ -84,11 +90,11 @@ const serviceIconBySlug: Record<string, typeof Paintbrush> = {
 }
 
 export default function ServicesPage() {
-  const [publishedServices, setPublishedServices] = useState<PublishedService[]>(fallbackPublishedServices)
+  const [publishedServices, setPublishedServices] = useState<PublishedService[]>(orderServices(fallbackPublishedServices))
 
   useEffect(() => {
     let active = true
-    getPublishedServices().then((response) => { if (active) setPublishedServices(response) }).catch(() => undefined)
+    getPublishedServices().then((response) => { if (active) setPublishedServices(orderServices(response)) }).catch(() => undefined)
     return () => { active = false }
   }, [])
 
@@ -119,7 +125,9 @@ export default function ServicesPage() {
 
       <section className="service-detail-list" aria-label="Painting service details">
         {publishedServices.map((service, index) => <article className={`service-detail ${index % 2 ? 'service-detail-reverse' : ''}`} id={service.slug} key={service.slug}>
-          <div className="service-detail-image"><img src={service.image} alt={service.imageAlt} /><span>{service.label}</span></div>
+          {service.slug === 'roof-painting'
+            ? <div className="service-detail-image service-detail-video"><video src="/videos/roof-painting.mp4" autoPlay loop muted playsInline preload="auto" aria-label="Roof painting project video" /><span>{service.label}</span></div>
+            : service.image && <div className="service-detail-image"><img src={service.image} alt={service.imageAlt} /><span>{service.label}</span></div>}
           <div className="service-detail-copy"><p className="eyebrow">{service.label}</p><h2>{service.title}</h2><p>{service.description}</p><ul>{service.inclusions.map((item) => <li key={item}><Check size={16} strokeWidth={2} aria-hidden="true" />{item}</li>)}</ul><aside>{service.note}</aside><a href="/#quote">Request a quote for this service <ArrowRight size={16} aria-hidden="true" /></a></div>
         </article>)}
       </section>
