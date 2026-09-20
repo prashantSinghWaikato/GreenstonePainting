@@ -56,3 +56,9 @@ WHERE slug = 'residential-transformation'
 AND service_id = (
     SELECT id FROM service_offerings WHERE slug = 'exterior-painting'
 );
+
+UPDATE portfolio_projects
+SET location = 'Hamilton',
+    updated_at = CURRENT_TIMESTAMP
+WHERE (slug = 'contemporary-exterior-renewal' AND location = 'Hamilton, Waikato')
+   OR (slug = 'new-build-interior-package' AND location = 'Waikato');

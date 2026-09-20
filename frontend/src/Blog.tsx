@@ -14,7 +14,6 @@ export function PublicHeader({ active }: { active?: 'services' | 'projects' | 'b
     <a className="skip-link" href="#main-content">Skip to content</a>
     <div className="utility-bar">
       <div className="page-container utility-inner">
-        <p><strong>Registered Master Painters member</strong></p>
         <div className="utility-contact">
           <span className="utility-item"><MapPin size={14} strokeWidth={2} aria-hidden="true" />Hamilton, Waikato</span>
           <a className="utility-item" href="mailto:info@greenstonepainting.co.nz"><Mail size={14} strokeWidth={2} aria-hidden="true" />info@greenstonepainting.co.nz</a>

@@ -111,10 +111,6 @@ export const projectPhotoGroups = [
       {
         "src": "/images/projects/new-builds-19.webp",
         "alt": "Bedroom with curved wardrobe and white walls"
-      },
-      {
-        "src": "/images/projects/new-builds-20.webp",
-        "alt": "White doors stacked during painting work"
       }
     ]
   },

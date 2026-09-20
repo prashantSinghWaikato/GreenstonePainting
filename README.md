@@ -14,7 +14,7 @@ Start the Spring Boot API:
 
 ```bash
 cd backend
-ADMIN_EMAIL=office@example.com ADMIN_PASSWORD='use-at-least-12-characters' ./gradlew bootRun
+GOOGLE_PLACES_API_KEY='your-restricted-server-key' ADMIN_EMAIL=office@example.com ADMIN_PASSWORD='use-at-least-12-characters' ./gradlew bootRun
 ```
 
 The admin account is created on the first backend start and can be used at [http://localhost:5173/admin/](http://localhost:5173/admin/). The password is stored as a BCrypt hash and is never written to source control. If the account already exists, changing the environment variable does not silently reset its password.
@@ -28,6 +28,8 @@ npm run dev
 ```
 
 The frontend uses `http://localhost:8080` as its default API URL. Copy `frontend/.env.example` to `frontend/.env` when a different API URL is required.
+
+The public rating is loaded from the current Greenstone Painting Google Place record on each page load. Keep `GOOGLE_PLACES_API_KEY` on the backend only; do not add it to Vite or frontend source. If Google creates or merges the business into a different Place record, set `GOOGLE_PLACES_PLACE_ID` to the replacement ID in the backend environment.
 
 ## Automated full-stack test
 

@@ -68,7 +68,7 @@ export const projects: Project[] = [
   {
     title: 'Contemporary Exterior Renewal',
     category: 'Exterior painting',
-    location: 'Hamilton, Waikato',
+    location: 'Hamilton',
     image: '/images/projects/featured-townhouse-exterior.webp',
     alt: 'White and charcoal multi-unit townhouse exterior',
     summary: 'A precise multi-surface exterior finish designed to complement modern architectural lines.',
@@ -76,7 +76,7 @@ export const projects: Project[] = [
   {
     title: 'New Build Interior Package',
     category: 'Interior Painting',
-    location: 'Waikato',
+    location: 'Hamilton',
     image: '/images/projects/featured-interior-bedroom.webp',
     alt: 'Freshly painted white bedroom with decorative ceiling panels',
     summary: 'A coordinated interior package with clean transitions across walls, ceilings, trim, and cabinetry.',

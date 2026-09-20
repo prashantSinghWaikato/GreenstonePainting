@@ -5,6 +5,7 @@ import { FaFacebookF, FaInstagram } from 'react-icons/fa'
 import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
 import { getPublishedArticles, type PublishedArticle } from './api/articles'
 import { getPublishedProjects, type PublishedProject } from './api/projects'
+import { getGoogleReviews, type GoogleReviewsSummary } from './api/reviews'
 import { getPublishedServices } from './api/services'
 import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services as fallbackServices } from './data/site'
 import ColourStudio from './ColourStudio'
@@ -35,7 +36,7 @@ const serviceIconBySlug = new Map(fallbackServices.map((service, index) => [serv
 const maximumPhotoCount = 4
 const maximumPhotoSize = 5 * 1024 * 1024
 const acceptedPhotoTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
-
+const googleReviewsSearchUrl = 'https://www.google.com/search?q=Greenstone+Painting+Limited+Hamilton+reviews'
 type SelectedPhoto = {
   id: string
   file: File
@@ -125,8 +126,17 @@ function App() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [privacyError, setPrivacyError] = useState('')
   const [colourStudioOpen, setColourStudioOpen] = useState(false)
+  const [googleReviews, setGoogleReviews] = useState<GoogleReviewsSummary | null>(null)
   const photosRef = useRef<SelectedPhoto[]>([])
   const quoteFormRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    let active = true
+    getGoogleReviews().then((summary) => {
+      if (active && summary) setGoogleReviews(summary)
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -412,7 +422,6 @@ function App() {
 
       <div className="utility-bar">
         <div className="page-container utility-inner">
-          <p><strong>Registered Master Painters member</strong></p>
           <div className="utility-contact">
             <span className="utility-item"><MapPin size={14} strokeWidth={2} aria-hidden="true" />Hamilton, Waikato</span>
             <a className="utility-item" href="mailto:info@greenstonepainting.co.nz"><Mail size={14} strokeWidth={2} aria-hidden="true" />info@greenstonepainting.co.nz</a>
@@ -480,7 +489,7 @@ function App() {
           </div>
         </section>
 
-        <div className="paint-spectrum" aria-hidden="true"><span /><span /><span /><span /><span /><span /><span /></div>
+        <div className="paint-spectrum" aria-hidden="true"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
 
         <section className="proof-bar" aria-label="Greenstone Painting capabilities">
           <div className="page-container proof-grid">
@@ -598,9 +607,10 @@ function App() {
         </section>
 
         <section className="section reviews-section" id="reviews">
-          <div className="page-container"><div className="section-heading review-heading"><div><p className="eyebrow">Customer confidence</p><h2>Feedback that reflects<br />the finished work.</h2></div><div className="rating-summary"><strong>5.0</strong><span>★★★★★</span><small>One verified Bark review</small></div></div>
-            <div className="reviews-grid reviews-grid-single">
-              <article className="review-card featured-review rounded-card ring-1 ring-slate-950/5 transition duration-300 hover:-translate-y-1 hover:shadow-enterprise"><div className="stars" aria-label="5 out of 5 stars">★★★★★</div><blockquote>“Great service. Good price. Great job.”</blockquote><footer><strong>Clare</strong><span>Verified Bark customer · Interior painting</span></footer></article>
+          <div className="page-container"><div className="section-heading review-heading"><div><p className="eyebrow">Customer confidence</p><h2>Trusted by customers<br />across Hamilton.</h2></div>{googleReviews ? <a className="rating-summary google-rating-summary" href={googleReviews.googleMapsUrl || googleReviewsSearchUrl} target="_blank" rel="noreferrer" aria-label={`${googleReviews.rating.toFixed(1)} out of 5 from ${googleReviews.reviewCount} Google reviews. Read ratings on Google.`}><strong>{googleReviews.rating.toFixed(1)}</strong><span aria-hidden="true">★★★★★</span><small>{googleReviews.reviewCount} Google reviews</small></a> : <a className="rating-summary google-rating-summary" href={googleReviewsSearchUrl} target="_blank" rel="noreferrer"><strong>Google</strong><small>View current rating</small></a>}</div>
+            <div className="google-reviews-overview">
+              <div><span className="google-review-mark" aria-hidden="true">G</span><div><strong>{googleReviews ? `Rated ${googleReviews.rating.toFixed(1)} on Google` : 'Current Google rating'}</strong><p>{googleReviews ? `Based on ${googleReviews.reviewCount} customer ratings. View the original ratings directly on Google.` : 'Open Google to view the latest customer rating and review count.'}</p></div></div>
+              <a className="button button-dark" href={googleReviews?.googleMapsUrl || googleReviewsSearchUrl} target="_blank" rel="noreferrer">View ratings on Google ↗</a>
             </div>
           </div>
         </section>

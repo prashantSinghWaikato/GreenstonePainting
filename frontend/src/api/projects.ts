@@ -26,6 +26,10 @@ export async function getPublishedProjects(): Promise<PublishedProject[]> {
   const projects = (await response.json()) as PublishedProjectResponse[]
   return projects.map((project) => ({
     ...project,
+    location: (project.slug === 'contemporary-exterior-renewal' && project.location === 'Hamilton, Waikato')
+      || (project.slug === 'new-build-interior-package' && project.location === 'Waikato')
+      ? 'Hamilton'
+      : project.location,
     category: project.slug === 'new-build-interior-package' && project.category === 'New Builds & Renovations'
       ? 'Interior Painting'
       : project.slug === 'residential-transformation' && project.category === 'Exterior Painting'
