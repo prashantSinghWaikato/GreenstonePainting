@@ -3,6 +3,7 @@ services:
     name: greenstone-painting-demo
     runtime: docker
     plan: free
+    region: singapore
     autoDeploy: false
     healthCheckPath: /api/health
     envVars:
