@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: greenstone-painting-demo
+    runtime: docker
+    plan: free
+    autoDeploy: false
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_DISPLAY_NAME
+        value: Greenstone Demo Admin
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: GOOGLE_PLACES_PLACE_ID
+        value: ChIJw4XxyH07bW0R-WIsGGHw_q4
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_SAME_SITE
+        value: lax
+      - key: NOTIFICATION_AUTOMATION_ENABLED
+        value: "false"
+      - key: MAIL_DELIVERY_ENABLED
+        value: "false"
+      - key: DB_MAX_POOL_SIZE
+        value: "3"
+      - key: UPLOAD_DIRECTORY
+        value: /tmp/greenstone-uploads
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: FRONTEND_PUBLIC_BASE_URL
+        sync: false

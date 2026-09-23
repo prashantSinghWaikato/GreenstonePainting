@@ -2,6 +2,8 @@
 
 The goal of this project is to design and develop an enterprise-level digital platform for Greenstone Painting that improves its online presence, customer experience, and business operations.
 
+For the temporary free-tier demonstration deployment, see [DEMO_DEPLOYMENT.md](DEMO_DEPLOYMENT.md). It uses an independent Render URL and does not replace or modify the existing public website.
+
 ## Run locally
 
 Start PostgreSQL and the local email inbox:
