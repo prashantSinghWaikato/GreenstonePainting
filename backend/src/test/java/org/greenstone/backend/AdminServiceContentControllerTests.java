@@ -62,7 +62,7 @@ class AdminServiceContentControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].slug").value("interior-painting"))
                 .andExpect(jsonPath("$[0].inclusions.length()").value(4))
-                .andExpect(jsonPath("$[0].imageUrl").value("/images/greenstone-bedroom.webp"));
+                .andExpect(jsonPath("$[0].imageUrl").value("/images/projects/feature-walls-02.webp"));
     }
 
     @Test

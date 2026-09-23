@@ -6,6 +6,7 @@ import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } f
 import { getPublishedArticles, type PublishedArticle } from './api/articles'
 import { getPublishedProjects, type PublishedProject } from './api/projects'
 import { getGoogleReviews, type GoogleReviewsSummary } from './api/reviews'
+import { fallbackColours, getPaletteColours } from './api/colours'
 import { getPublishedServices } from './api/services'
 import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services as fallbackServices } from './data/site'
 import ColourStudio from './ColourStudio'
@@ -126,6 +127,7 @@ function App() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [privacyError, setPrivacyError] = useState('')
   const [colourStudioOpen, setColourStudioOpen] = useState(false)
+  const [paletteColours, setPaletteColours] = useState(fallbackColours)
   const [googleReviews, setGoogleReviews] = useState<GoogleReviewsSummary | null>(null)
   const photosRef = useRef<SelectedPhoto[]>([])
   const quoteFormRef = useRef<HTMLFormElement>(null)
@@ -134,6 +136,14 @@ function App() {
     let active = true
     getGoogleReviews().then((summary) => {
       if (active && summary) setGoogleReviews(summary)
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    getPaletteColours().then((colours) => {
+      if (active && colours.length) setPaletteColours(colours)
     }).catch(() => undefined)
     return () => { active = false }
   }, [])
@@ -477,7 +487,7 @@ function App() {
             <button className="hero-paint-card" type="button" onClick={() => setColourStudioOpen(true)} aria-haspopup="dialog">
               <div className="paint-card-heading"><span><Palette size={20} strokeWidth={1.8} /></span><p>Colour consultation</p></div>
               <strong>A finish made for your space.</strong>
-              <div className="paint-swatches" aria-hidden="true"><span /><span /><span /><span /><span /></div>
+              <div className="paint-swatches" aria-hidden="true">{paletteColours.slice(0, 5).map((colour) => <span style={{ backgroundColor: colour.hex }} key={colour.id} />)}</div>
               <small><Paintbrush size={14} strokeWidth={1.8} /> Open the interactive colour preview</small>
             </button>
             <div className="hero-controls" aria-label="Featured project slideshow">
@@ -657,7 +667,7 @@ function App() {
         </div>
         <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting Limited</span><a href="/privacy/">Privacy Notice</a></div>
       </footer>
-      <ColourStudio open={colourStudioOpen} onClose={closeColourStudio} />
+      <ColourStudio open={colourStudioOpen} onClose={closeColourStudio} colours={paletteColours} />
     </div>
   )
 }

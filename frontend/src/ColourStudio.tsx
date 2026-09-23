@@ -1,26 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { House, Paintbrush, RotateCcw, Sofa, X } from 'lucide-react'
+import type { PaletteColour } from './api/colours'
 import './ColourStudio.css'
 
 type Scene = 'interior' | 'exterior'
 
-const colours = [
-  { name: 'Sea Fog', hex: '#e9e7e3' },
-  { name: 'Thorndon Cream', hex: '#dcd7c6' },
-  { name: 'White Pointer', hex: '#e1ddd7' },
-  { name: 'Black White', hex: '#ebe9e5' },
-  { name: 'Lemon Grass', hex: '#999a86' },
-  { name: 'Xanadu', hex: '#75876e' },
-  { name: 'Patina', hex: '#639283' },
-  { name: 'Stonewall', hex: '#807661' },
-  { name: 'West Coast', hex: '#5c512f' },
-  { name: 'Green Leaf', hex: '#526b2d' },
-]
-
-const defaults: Record<Scene, string> = { interior: '#e9e7e3', exterior: '#999a86' }
-
-export default function ColourStudio({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function ColourStudio({ open, onClose, colours }: { open: boolean; onClose: () => void; colours: PaletteColour[] }) {
+  const defaults: Record<Scene, string> = {
+    interior: colours.find((colour) => colour.defaultInterior)?.hex ?? colours[0].hex,
+    exterior: colours.find((colour) => colour.defaultExterior)?.hex ?? colours[0].hex,
+  }
   const [scene, setScene] = useState<Scene>('interior')
   const [selectedColour, setSelectedColour] = useState(defaults.interior)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -46,12 +36,13 @@ export default function ColourStudio({ open, onClose }: { open: boolean; onClose
     setScene(nextScene)
     setSelectedColour(defaults[nextScene])
   }
-  const colour = colours.find((item) => item.hex === selectedColour) ?? colours[0]
-  const previewStyle = { '--preview-colour': selectedColour } as CSSProperties
+  const effectiveSelectedColour = colours.some((item) => item.hex === selectedColour) ? selectedColour : defaults[scene]
+  const colour = colours.find((item) => item.hex === effectiveSelectedColour) ?? colours[0]
+  const previewStyle = { '--preview-colour': effectiveSelectedColour } as CSSProperties
 
   return <div className="colour-studio-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section className="colour-studio" role="dialog" aria-modal="true" aria-labelledby="colour-studio-title">
-      <div className="colour-studio-paint-line" aria-hidden="true"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
+      <div className="colour-studio-paint-line" aria-hidden="true">{colours.map((item) => <span style={{ backgroundColor: item.hex }} key={item.id} />)}</div>
       <header className="colour-studio-header"><div><p>Interactive colour preview</p><h2 id="colour-studio-title">See how colour changes a space.</h2></div><button ref={closeRef} type="button" onClick={onClose} aria-label="Close colour preview"><X size={21} /></button></header>
 
       <div className="colour-studio-layout">
@@ -80,7 +71,7 @@ export default function ColourStudio({ open, onClose }: { open: boolean; onClose
 
         <div className="colour-controls">
           <div><p className="colour-controls-kicker"><Paintbrush size={16} aria-hidden="true" />Choose a Resene colour</p><h3>{scene === 'interior' ? 'Wall colour' : 'Exterior body colour'}</h3><p>Select a swatch to update the preview instantly.</p></div>
-          <div className="colour-swatch-grid" role="list" aria-label="Available preview colours">{colours.map((item) => <button className={item.hex === selectedColour ? 'is-selected' : ''} type="button" role="listitem" aria-label={`Preview ${item.name}`} aria-pressed={item.hex === selectedColour} onClick={() => setSelectedColour(item.hex)} key={item.name}><span style={{ backgroundColor: item.hex }} /><small>{item.name}</small></button>)}</div>
+          <div className="colour-swatch-grid" role="list" aria-label="Available preview colours">{colours.map((item) => <button className={item.hex === effectiveSelectedColour ? 'is-selected' : ''} type="button" role="listitem" aria-label={`Preview ${item.name}`} aria-pressed={item.hex === effectiveSelectedColour} onClick={() => setSelectedColour(item.hex)} key={item.id}><span style={{ backgroundColor: item.hex }} /><small>{item.name}</small></button>)}</div>
           <button className="colour-reset" type="button" onClick={() => setSelectedColour(defaults[scene])}><RotateCcw size={15} aria-hidden="true" />Reset preview</button>
           <p className="colour-disclaimer">Resene colours are represented digitally for inspiration only. Screen settings and lighting affect appearance, so review a physical sample before making a final choice. Nothing is saved or submitted.</p>
         </div>
