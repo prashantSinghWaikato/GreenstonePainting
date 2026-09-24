@@ -24,6 +24,13 @@ function dateTime(value: string | null) {
 
 function statusLabel(status: string) { return status.charAt(0) + status.slice(1).toLowerCase() }
 
+const roofPaintingAdminPlaceholder = '/images/projects/renovation-03.webp'
+
+function servicePreviewImage(slug: string, imageUrl: string | null) {
+  if (imageUrl) return adminServiceImageUrl(imageUrl)
+  return slug === 'roof-painting' ? roofPaintingAdminPlaceholder : null
+}
+
 function toForm(service: AdminServiceDetail): SaveServiceInput {
   return {
     title: service.title, label: service.label, summary: service.summary, description: service.description,
@@ -32,11 +39,12 @@ function toForm(service: AdminServiceDetail): SaveServiceInput {
 }
 
 function ServicePreview({ form, imageUrl, imageAlt, slug, onClose }: { form: SaveServiceInput; imageUrl: string | null; imageAlt: string; slug: string; onClose: () => void }) {
+  const previewImage = servicePreviewImage(slug, imageUrl)
   return <div className="service-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section className="service-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="service-preview-title">
       <header><div><span className="admin-eyebrow">Customer view preview</span><h2 id="service-preview-title">{form.title}</h2></div><button type="button" onClick={onClose} aria-label="Close service preview"><X aria-hidden="true" /></button></header>
       <div className="service-preview-layout">
-        <div className="service-preview-media">{imageUrl ? <img src={adminServiceImageUrl(imageUrl)} alt={imageAlt} /> : <div><ImagePlus aria-hidden="true" /><span>Add a featured image before publishing</span></div>}<span>{form.label}</span></div>
+        <div className="service-preview-media">{previewImage ? <img src={previewImage} alt={imageUrl ? imageAlt : 'Roof and exterior of a freshly painted home'} /> : <div><ImagePlus aria-hidden="true" /><span>Add a featured image before publishing</span></div>}<span>{form.label}</span></div>
         <div className="service-preview-copy"><p className="admin-eyebrow">{form.label}</p><h2>{form.title}</h2><p>{form.description}</p><ul>{form.inclusions.filter(Boolean).map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul><aside>{form.note}</aside><small>/services/#{slug}</small></div>
       </div>
     </section>
@@ -186,7 +194,10 @@ export default function AdminServices({ session, onSessionExpired }: { session: 
     {error && <div className="content-message error" role="alert"><AlertTriangle aria-hidden="true" />{error}</div>}
     {success && <div className="content-message success" role="status"><CheckCircle2 aria-hidden="true" />{success}</div>}
 
-    {!selected || !form ? <div className="content-project-list service-admin-list">{services.map((service) => <button type="button" onClick={() => void openService(service.id)} key={service.id}><div className="content-project-thumb">{service.imageUrl ? <img src={adminServiceImageUrl(service.imageUrl)} alt="" /> : <ImagePlus aria-hidden="true" />}</div><div className="content-project-title"><span>Position {service.displayOrder}</span><h2>{service.title}</h2><p>{service.label}</p></div><span className={`content-status ${service.status.toLowerCase()}`}>{statusLabel(service.status)}</span><span className="content-updated">Updated {dateTime(service.updatedAt)}</span><Paintbrush aria-hidden="true" /></button>)}</div> : <div className="content-editor-shell">
+    {!selected || !form ? <div className="content-project-list service-admin-list">{services.map((service) => {
+      const previewImage = servicePreviewImage(service.slug, service.imageUrl)
+      return <button type="button" onClick={() => void openService(service.id)} key={service.id}><div className="content-project-thumb">{previewImage ? <img src={previewImage} alt="" /> : <ImagePlus aria-hidden="true" />}</div><div className="content-project-title"><span>Position {service.displayOrder}</span><h2>{service.title}</h2><p>{service.label}</p></div><span className={`content-status ${service.status.toLowerCase()}`}>{statusLabel(service.status)}</span><span className="content-updated">Updated {dateTime(service.updatedAt)}</span><Paintbrush aria-hidden="true" /></button>
+    })}</div> : <div className="content-editor-shell">
       <div className="content-editor-topbar"><button type="button" onClick={() => { setSelected(null); setForm(null); setError(''); setSuccess('') }}><ArrowLeft aria-hidden="true" /> All services</button><div><button type="button" className="article-preview-trigger" onClick={() => setPreviewOpen(true)}><Eye aria-hidden="true" /> Preview</button><span className={`content-status ${selected.status.toLowerCase()}`}>{statusLabel(selected.status)}</span>{selected.status === 'PUBLISHED' && <a href={`/services/#${selected.slug}`} target="_blank" rel="noreferrer"><Eye aria-hidden="true" /> View live</a>}</div></div>
       <div className="content-editor-grid">
         <form className="project-content-form service-content-form" onSubmit={save}>
