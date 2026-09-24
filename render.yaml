@@ -29,8 +29,24 @@ services:
         value: lax
       - key: NOTIFICATION_AUTOMATION_ENABLED
         value: "false"
+      - key: MAIL_HOST
+        value: smtp-relay.brevo.com
+      - key: MAIL_PORT
+        value: "2525"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_SMTP_AUTH
+        value: "true"
+      - key: MAIL_STARTTLS
+        value: "true"
       - key: MAIL_DELIVERY_ENABLED
-        value: "false"
+        sync: false
+      - key: QUOTE_NOTIFICATION_TO
+        sync: false
+      - key: QUOTE_NOTIFICATION_FROM
+        sync: false
       - key: DB_MAX_POOL_SIZE
         value: "3"
       - key: UPLOAD_DIRECTORY

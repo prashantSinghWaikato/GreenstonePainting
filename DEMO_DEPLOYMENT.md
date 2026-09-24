@@ -81,13 +81,13 @@ Use the Render URL to check:
 
 ## Optional email testing
 
-Render free web services block outbound SMTP ports 25, 465, and 587. A sandbox/provider that supports another SMTP port such as 2525 can be configured with:
+Render free web services block outbound SMTP ports 25, 465, and 587. Brevo supports port 2525 and can be configured with:
 
 ```text
-MAIL_HOST=provider-host
+MAIL_HOST=smtp-relay.brevo.com
 MAIL_PORT=2525
-MAIL_USERNAME=provider-user
-MAIL_PASSWORD=provider-password
+MAIL_USERNAME=the-SMTP-login-shown-by-Brevo
+MAIL_PASSWORD=a-Brevo-SMTP-key
 MAIL_SMTP_AUTH=true
 MAIL_STARTTLS=true
 MAIL_DELIVERY_ENABLED=true
@@ -95,7 +95,7 @@ QUOTE_NOTIFICATION_TO=demo-recipient@example.com
 QUOTE_NOTIFICATION_FROM=verified-sender@example.com
 ```
 
-If the provider only offers the blocked SMTP ports, an HTTPS email API integration is required instead.
+Keep `NOTIFICATION_AUTOMATION_ENABLED=false` until direct enquiry and quote emails have been tested. The From address must be a sender verified in Brevo. If another provider only offers the blocked SMTP ports, an HTTPS email API integration is required instead.
 
 ## Removing the demo
 
