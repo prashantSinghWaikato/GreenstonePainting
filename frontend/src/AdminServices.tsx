@@ -24,7 +24,7 @@ function dateTime(value: string | null) {
 
 function statusLabel(status: string) { return status.charAt(0) + status.slice(1).toLowerCase() }
 
-const roofPaintingAdminPlaceholder = '/images/projects/renovation-03.webp'
+const roofPaintingAdminPlaceholder = '/images/projects/roof-painting-admin.webp'
 
 function servicePreviewImage(slug: string, imageUrl: string | null) {
   if (imageUrl) return adminServiceImageUrl(imageUrl)
