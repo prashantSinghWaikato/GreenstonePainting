@@ -2,8 +2,7 @@
 
 Greenstone Painting is a full-stack customer and operations platform for a painting business in Hamilton, New Zealand. It combines a public marketing website and quotation journey with an authenticated administration portal for content, enquiries, quotes, jobs, invoices, staff notifications, and reporting.
 
-The repository currently supports local development, automated testing, and an isolated demonstration deployment. It is **not yet approved to replace the existing production website**. Review the [production-readiness checklist](#production-readiness-checklist) before using it for real customer work.
-
+The repository currently supports local development, automated testing, and an isolated demonstration deployment.
 ## Contents
 
 - [Capabilities](#capabilities)
