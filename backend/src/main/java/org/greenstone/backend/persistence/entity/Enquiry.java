@@ -30,17 +30,6 @@ public class Enquiry extends BaseEntity {
     @Column(nullable = false, length = 30)
     private EnquiryStatus status = EnquiryStatus.NEW;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_admin_id")
-    private AdminUser assignedTo;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private EnquiryPriority priority = EnquiryPriority.NORMAL;
-
-    @Column(name = "follow_up_at")
-    private OffsetDateTime followUpAt;
-
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
@@ -76,26 +65,11 @@ public class Enquiry extends BaseEntity {
     @Column(name = "desired_start_date")
     private LocalDate desiredStartDate;
 
-    @Column(name = "internal_notes", length = 10000)
-    private String internalNotes;
-
-    @Column(name = "upload_token_hash", length = 64)
-    private String uploadTokenHash;
-
-    @Column(name = "upload_token_expires_at")
-    private OffsetDateTime uploadTokenExpiresAt;
-
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
     @Column(name = "notification_sent_at")
     private OffsetDateTime notificationSentAt;
-
-    @Column(name = "review_token_hash", length = 64)
-    private String reviewTokenHash;
-
-    @Column(name = "review_token_expires_at")
-    private OffsetDateTime reviewTokenExpiresAt;
 
     protected Enquiry() {
     }
@@ -113,12 +87,6 @@ public class Enquiry extends BaseEntity {
     public void setType(EnquiryType type) { this.type = type; }
     public EnquiryStatus getStatus() { return status; }
     public void setStatus(EnquiryStatus status) { this.status = status; }
-    public AdminUser getAssignedTo() { return assignedTo; }
-    public void setAssignedTo(AdminUser assignedTo) { this.assignedTo = assignedTo; }
-    public EnquiryPriority getPriority() { return priority; }
-    public void setPriority(EnquiryPriority priority) { this.priority = priority; }
-    public OffsetDateTime getFollowUpAt() { return followUpAt; }
-    public void setFollowUpAt(OffsetDateTime followUpAt) { this.followUpAt = followUpAt; }
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }
@@ -141,18 +109,8 @@ public class Enquiry extends BaseEntity {
     public void setEstimatedBudget(BigDecimal estimatedBudget) { this.estimatedBudget = estimatedBudget; }
     public LocalDate getDesiredStartDate() { return desiredStartDate; }
     public void setDesiredStartDate(LocalDate desiredStartDate) { this.desiredStartDate = desiredStartDate; }
-    public String getInternalNotes() { return internalNotes; }
-    public void setInternalNotes(String internalNotes) { this.internalNotes = internalNotes; }
-    public String getUploadTokenHash() { return uploadTokenHash; }
-    public void setUploadTokenHash(String uploadTokenHash) { this.uploadTokenHash = uploadTokenHash; }
-    public OffsetDateTime getUploadTokenExpiresAt() { return uploadTokenExpiresAt; }
-    public void setUploadTokenExpiresAt(OffsetDateTime uploadTokenExpiresAt) { this.uploadTokenExpiresAt = uploadTokenExpiresAt; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
     public OffsetDateTime getNotificationSentAt() { return notificationSentAt; }
     public void setNotificationSentAt(OffsetDateTime notificationSentAt) { this.notificationSentAt = notificationSentAt; }
-    public String getReviewTokenHash() { return reviewTokenHash; }
-    public void setReviewTokenHash(String reviewTokenHash) { this.reviewTokenHash = reviewTokenHash; }
-    public OffsetDateTime getReviewTokenExpiresAt() { return reviewTokenExpiresAt; }
-    public void setReviewTokenExpiresAt(OffsetDateTime reviewTokenExpiresAt) { this.reviewTokenExpiresAt = reviewTokenExpiresAt; }
 }

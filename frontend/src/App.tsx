@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, DragEvent, FormEvent } from 'react'
-import { AlertCircle, Building2, Check, Fence, Hammer, House, ImagePlus, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone, RotateCcw, X } from 'lucide-react'
+import type { FormEvent } from 'react'
+import { AlertCircle, Building2, Fence, Hammer, House, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
-import { completeEnquiry, createEnquiry, EnquiryApiError, uploadEnquiryPhoto } from './api/enquiries'
+import { createEnquiry, EnquiryApiError } from './api/enquiries'
 import { getPublishedArticles, type PublishedArticle } from './api/articles'
 import { getPublishedProjects, type PublishedProject } from './api/projects'
-import { getGoogleReviews, type GoogleReviewsSummary } from './api/reviews'
 import { fallbackColours, getPaletteColours } from './api/colours'
 import { getPublishedServices } from './api/services'
 import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services as fallbackServices } from './data/site'
+import { customerReviews } from './data/reviews'
 import ColourStudio from './ColourStudio'
 import './App.css'
 
@@ -34,22 +34,7 @@ const initialQuoteForm: QuoteFormState = {
 
 const serviceIcons = [Paintbrush, House, Building2, PaintBucket, Hammer, Fence]
 const serviceIconBySlug = new Map(fallbackServices.map((service, index) => [service.slug, serviceIcons[index]]))
-const maximumPhotoCount = 4
-const maximumPhotoSize = 5 * 1024 * 1024
-const acceptedPhotoTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
 const googleReviewsSearchUrl = 'https://www.google.com/search?q=Greenstone+Painting+Limited+Hamilton+reviews'
-type SelectedPhoto = {
-  id: string
-  file: File
-  previewUrl: string
-  status: 'ready' | 'uploading' | 'uploaded' | 'failed'
-  error?: string
-}
-
-type UploadContext = {
-  enquiryId: string
-  uploadToken: string
-}
 
 type QuoteFormErrors = Partial<Record<keyof QuoteFormState, string>>
 
@@ -118,27 +103,14 @@ function App() {
   const [submitting, setSubmitting] = useState(false)
   const [submissionReference, setSubmissionReference] = useState('')
   const [submissionError, setSubmissionError] = useState('')
-  const [photos, setPhotos] = useState<SelectedPhoto[]>([])
-  const [photoError, setPhotoError] = useState('')
   const [completionError, setCompletionError] = useState('')
   const [notificationSent, setNotificationSent] = useState(false)
-  const [uploadContext, setUploadContext] = useState<UploadContext | null>(null)
   const [fieldErrors, setFieldErrors] = useState<QuoteFormErrors>({})
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [privacyError, setPrivacyError] = useState('')
   const [colourStudioOpen, setColourStudioOpen] = useState(false)
   const [paletteColours, setPaletteColours] = useState(fallbackColours)
-  const [googleReviews, setGoogleReviews] = useState<GoogleReviewsSummary | null>(null)
-  const photosRef = useRef<SelectedPhoto[]>([])
   const quoteFormRef = useRef<HTMLFormElement>(null)
-
-  useEffect(() => {
-    let active = true
-    getGoogleReviews().then((summary) => {
-      if (active && summary) setGoogleReviews(summary)
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
 
   useEffect(() => {
     let active = true
@@ -183,10 +155,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    photosRef.current = photos
-  }, [photos])
-
-  useEffect(() => {
     const showQuoteForm = (serviceSlug?: string) => {
       if (serviceSlug && services.some((service) => service.slug === serviceSlug)) {
         setQuoteForm((current) => ({ ...current, service: serviceSlug }))
@@ -208,8 +176,6 @@ function App() {
 
     return () => window.removeEventListener('greenstone:open-quote', handleAssistantQuote)
   }, [services])
-
-  useEffect(() => () => photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl)), [])
 
   const updateField = <K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => {
     setQuoteForm((current) => ({ ...current, [field]: value }))
@@ -237,94 +203,6 @@ function App() {
     window.requestAnimationFrame(() => {
       quoteFormRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
     })
-  }
-
-  const selectPhotos = (fileList: FileList | File[]) => {
-    if (uploadContext || submitting) return
-
-    const availableSlots = maximumPhotoCount - photos.length
-    const candidates = Array.from(fileList)
-    const accepted: SelectedPhoto[] = []
-    let validationMessage = ''
-
-    for (const file of candidates.slice(0, availableSlots)) {
-      const extension = file.name.split('.').pop()?.toLowerCase()
-      const supported = acceptedPhotoTypes.has(file.type) || (!file.type && (extension === 'heic' || extension === 'heif'))
-      if (!supported) {
-        validationMessage = 'Use JPEG, PNG, WebP, HEIC, or HEIF photos.'
-        continue
-      }
-      if (file.size > maximumPhotoSize) {
-        validationMessage = 'Each photo must be 5 MB or smaller.'
-        continue
-      }
-      accepted.push({ id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), status: 'ready' })
-    }
-
-    if (candidates.length > availableSlots) validationMessage = 'You can attach up to 4 photos.'
-    setPhotos((current) => [...current, ...accepted])
-    setPhotoError(validationMessage)
-  }
-
-  const handlePhotoInput = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) selectPhotos(event.target.files)
-    event.target.value = ''
-  }
-
-  const handlePhotoDrop = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault()
-    selectPhotos(event.dataTransfer.files)
-  }
-
-  const removePhoto = (photoId: string) => {
-    const removed = photos.find((photo) => photo.id === photoId)
-    if (removed) URL.revokeObjectURL(removed.previewUrl)
-    const remaining = photos.filter((photo) => photo.id !== photoId)
-    setPhotos(remaining)
-    setPhotoError('')
-    if (uploadContext && remaining.length === 0 && notificationSent) setUploadContext(null)
-  }
-
-  const uploadPhotos = async (context: UploadContext, selectedPhotos: SelectedPhoto[]) => {
-    const results = await Promise.all(selectedPhotos.map(async (photo) => {
-      setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, status: 'uploading', error: undefined } : item))
-      try {
-        await uploadEnquiryPhoto(context.enquiryId, context.uploadToken, photo.file)
-        setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, status: 'uploaded', error: undefined } : item))
-        return { id: photo.id, uploaded: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : `We could not upload ${photo.file.name}.`
-        setPhotos((current) => current.map((item) => item.id === photo.id ? { ...item, status: 'failed', error: message } : item))
-        return { id: photo.id, uploaded: false }
-      }
-    }))
-    return results
-  }
-
-  const finishPhotoUploads = (results: { id: string; uploaded: boolean }[]) => {
-    const uploadedIds = new Set(results.filter((result) => result.uploaded).map((result) => result.id))
-    photos.filter((photo) => uploadedIds.has(photo.id)).forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
-    const failedPhotos = photos.filter((photo) => !uploadedIds.has(photo.id))
-    setPhotos(failedPhotos)
-    if (failedPhotos.length === 0) {
-      setPhotoError('')
-    } else {
-      setPhotoError(`Your quote was saved, but ${failedPhotos.length} photo${failedPhotos.length === 1 ? '' : 's'} could not be uploaded. Please retry.`)
-    }
-    return failedPhotos
-  }
-
-  const completeRequest = async (context: UploadContext, keepUploadAccess: boolean) => {
-    try {
-      await completeEnquiry(context.enquiryId, context.uploadToken)
-      setNotificationSent(true)
-      setCompletionError('')
-      if (!keepUploadAccess) setUploadContext(null)
-    } catch (error) {
-      setNotificationSent(false)
-      setUploadContext(context)
-      setCompletionError(error instanceof Error ? error.message : 'Your request was saved, but final confirmation is temporarily unavailable.')
-    }
   }
 
   const submitQuote = async (event: FormEvent<HTMLFormElement>) => {
@@ -357,19 +235,13 @@ function App() {
         propertyAddress: quoteForm.location,
         message: quoteForm.message,
       })
-      const context = { enquiryId: response.id, uploadToken: response.uploadToken }
       setSubmissionReference(response.id.slice(0, 8).toUpperCase())
       setQuoteForm(initialQuoteForm)
       setPrivacyAccepted(false)
       setPrivacyError('')
       setFieldErrors({})
-      setUploadContext(context)
-      let failedPhotos: SelectedPhoto[] = []
-      if (photos.length > 0) {
-        const results = await uploadPhotos(context, photos)
-        failedPhotos = finishPhotoUploads(results)
-      }
-      await completeRequest(context, failedPhotos.length > 0)
+      setNotificationSent(response.notificationSent)
+      setCompletionError(response.notificationSent ? '' : 'The request was saved, but the team email could not be sent. Please call us if your project is urgent.')
     } catch (error) {
       if (error instanceof EnquiryApiError && Object.keys(error.fieldErrors).length > 0) {
         const backendFieldMap: Record<string, keyof QuoteFormState> = {
@@ -392,30 +264,11 @@ function App() {
     }
   }
 
-  const retryPhotoUploads = async () => {
-    if (!uploadContext || photos.length === 0) return
-    setSubmitting(true)
-    setPhotoError('')
-    const results = await uploadPhotos(uploadContext, photos)
-    const failedPhotos = finishPhotoUploads(results)
-    if (failedPhotos.length === 0 && notificationSent) setUploadContext(null)
-    setSubmitting(false)
-  }
-
-  const retryCompletion = async () => {
-    if (!uploadContext) return
-    setSubmitting(true)
-    await completeRequest(uploadContext, photos.length > 0)
-    setSubmitting(false)
-  }
-
   const startAnotherQuote = () => {
     setSubmissionReference('')
     setSubmissionError('')
     setCompletionError('')
     setNotificationSent(false)
-    setUploadContext(null)
-    setPhotoError('')
     setFieldErrors({})
     setQuoteForm(initialQuoteForm)
     setPrivacyAccepted(false)
@@ -585,45 +438,29 @@ function App() {
               <label htmlFor={fieldIds.location}>Property location *<input id={fieldIds.location} required maxLength={300} autoComplete="street-address" value={quoteForm.location} aria-invalid={Boolean(fieldErrors.location)} aria-describedby={fieldErrors.location ? 'quote-location-error' : undefined} onBlur={() => validateFieldOnBlur('location')} onChange={(event) => updateField('location', event.target.value)} />{fieldErrors.location && <span className="field-error" id="quote-location-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.location}</span>}</label>
               <label htmlFor={fieldIds.service}>Service required *<select id={fieldIds.service} required value={quoteForm.service} aria-invalid={Boolean(fieldErrors.service)} aria-describedby={fieldErrors.service ? 'quote-service-error' : undefined} onBlur={() => validateFieldOnBlur('service')} onChange={(event) => updateField('service', event.target.value)}><option value="">Select a service</option>{services.map((service) => <option value={service.slug} key={service.slug}>{service.title}</option>)}</select>{fieldErrors.service && <span className="field-error" id="quote-service-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.service}</span>}</label>
               <label htmlFor={fieldIds.message}>Project description *<textarea id={fieldIds.message} required maxLength={10000} rows={4} placeholder="Property type, surfaces to paint, preferred timing, and anything else we should know." value={quoteForm.message} aria-invalid={Boolean(fieldErrors.message)} aria-describedby={fieldErrors.message ? 'quote-message-error' : undefined} onBlur={() => validateFieldOnBlur('message')} onChange={(event) => updateField('message', event.target.value)} />{fieldErrors.message && <span className="field-error" id="quote-message-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.message}</span>}</label>
-              {!uploadContext && <label className={`upload-field ${submitting || photos.length >= maximumPhotoCount ? 'upload-field-disabled' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={handlePhotoDrop}>
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple disabled={submitting || photos.length >= maximumPhotoCount} onChange={handlePhotoInput} />
-                <span className="upload-icon" aria-hidden="true"><ImagePlus size={17} /></span>
-                <strong>{photos.length >= maximumPhotoCount ? '4 photos selected' : 'Add project photos'}</strong>
-                <small>Drag and drop or choose up to 4 photos · 5 MB each</small>
-              </label>}
               <label className="privacy-acknowledgement" htmlFor="quote-privacy">
                 <input id="quote-privacy" type="checkbox" required checked={privacyAccepted} aria-invalid={Boolean(privacyError)} aria-describedby={privacyError ? 'quote-privacy-error' : 'quote-privacy-help'} onChange={(event) => { setPrivacyAccepted(event.target.checked); setPrivacyError('') }} />
-                <span>I have read the <a href="#privacy">Privacy Notice</a> and understand how my contact details, project information, and optional photos will be used.</span>
+                <span>I have read the <a href="#privacy">Privacy Notice</a> and understand how my contact details and project information will be used.</span>
               </label>
-              <small className="privacy-help" id="quote-privacy-help">Only upload photos relevant to the painting work. Avoid including people or unrelated personal information.</small>
+              <small className="privacy-help" id="quote-privacy-help">We use these details only to assess and respond to your project request.</small>
               {privacyError && <span className="field-error" id="quote-privacy-error"><AlertCircle size={13} aria-hidden="true" />{privacyError}</span>}
               </>}
-              {photos.length > 0 && <div className="photo-preview-grid" aria-label="Selected project photos">
-                {photos.map((photo) => <article className={`photo-preview photo-${photo.status}`} key={photo.id}>
-                  <img src={photo.previewUrl} alt="" />
-                  <div className="photo-preview-shade" aria-hidden="true" />
-                  <button type="button" aria-label={`Remove ${photo.file.name}`} disabled={photo.status === 'uploading'} onClick={() => removePhoto(photo.id)}><X size={15} /></button>
-                  <div className="photo-meta"><strong title={photo.file.name}>{photo.file.name}</strong><span>{photo.status === 'uploading' ? 'Uploading…' : photo.status === 'uploaded' ? <><Check size={13} /> Uploaded</> : photo.status === 'failed' ? 'Upload failed' : `${(photo.file.size / 1024 / 1024).toFixed(1)} MB`}</span></div>
-                </article>)}
-              </div>}
-              {photoError && <div className="photo-error" role="alert"><span>{photoError}</span>{uploadContext && <button type="button" onClick={retryPhotoUploads} disabled={submitting}><RotateCcw size={14} />{submitting ? 'Retrying…' : 'Retry photo uploads'}</button>}</div>}
               {submissionReference && <div className="form-success" role="status"><strong>Thanks—your request has been received.</strong><span>Reference: {submissionReference}. {notificationSent ? 'Our team has been notified and will contact you shortly.' : 'Your project details are safely recorded.'}</span></div>}
-              {completionError && <div className="completion-error" role="alert"><div><strong>Your quote is safely saved.</strong><span>{completionError}</span></div><button type="button" onClick={retryCompletion} disabled={submitting}><RotateCcw size={14} />{submitting ? 'Retrying…' : 'Retry confirmation'}</button></div>}
+              {completionError && <div className="completion-error" role="alert"><div><strong>Your quote is safely saved.</strong><span>{completionError}</span></div></div>}
               {!submissionReference && <div className="form-submit"><button className="button button-primary" type="submit" disabled={submitting || !privacyAccepted} aria-describedby="quote-submit-help">{submitting ? 'Submitting…' : 'Submit Quote Request →'}</button><p id="quote-submit-help">{privacyAccepted ? 'We use your details to assess and respond to this project request.' : 'Read and accept the Privacy Notice to enable submission.'}</p></div>}
-              {submissionReference && notificationSent && photos.length === 0 && <div className="form-submit"><button className="button button-dark" type="button" onClick={startAnotherQuote}>Start another request →</button></div>}
+              {submissionReference && <div className="form-submit"><button className="button button-dark" type="button" onClick={startAnotherQuote}>Start another request →</button></div>}
               {submissionError && <div className="form-error" role="alert"><strong>Unable to submit your request.</strong><span>{submissionError}</span></div>}
             </form>
           </div>
         </section>
 
-        <section className="section reviews-section" id="reviews">
-          <div className="page-container"><div className="section-heading review-heading"><div><p className="eyebrow">Customer confidence</p><h2>Trusted by customers<br />across Hamilton.</h2></div>{googleReviews ? <a className="rating-summary google-rating-summary" href={googleReviews.googleMapsUrl || googleReviewsSearchUrl} target="_blank" rel="noreferrer" aria-label={`${googleReviews.rating.toFixed(1)} out of 5 from ${googleReviews.reviewCount} Google reviews. Read ratings on Google.`}><strong>{googleReviews.rating.toFixed(1)}</strong><span aria-hidden="true">★★★★★</span><small>{googleReviews.reviewCount} Google reviews</small></a> : <a className="rating-summary google-rating-summary" href={googleReviewsSearchUrl} target="_blank" rel="noreferrer"><strong>Google</strong><small>View current rating</small></a>}</div>
-            <div className="google-reviews-overview">
-              <div><span className="google-review-mark" aria-hidden="true">G</span><div><strong>{googleReviews ? `Rated ${googleReviews.rating.toFixed(1)} on Google` : 'Current Google rating'}</strong><p>{googleReviews ? `Based on ${googleReviews.reviewCount} customer ratings. View the original ratings directly on Google.` : 'Open Google to view the latest customer rating and review count.'}</p></div></div>
-              <a className="button button-dark" href={googleReviews?.googleMapsUrl || googleReviewsSearchUrl} target="_blank" rel="noreferrer">View ratings on Google ↗</a>
-            </div>
+        {customerReviews.length > 0 && <section className="section reviews-section" id="reviews">
+          <div className="page-container">
+            <div className="section-heading review-heading"><div><p className="eyebrow">Customer confidence</p><h2>Trusted by customers<br />across Hamilton.</h2></div><a className="rating-summary google-rating-summary" href={googleReviewsSearchUrl} target="_blank" rel="noreferrer"><strong>{(customerReviews.reduce((sum, review) => sum + review.rating, 0) / customerReviews.length).toFixed(1)}</strong><span aria-hidden="true">★★★★★</span><small>{customerReviews.length} featured reviews</small></a></div>
+            <div className="customer-review-grid">{customerReviews.map((review) => <article className="customer-review-card" key={`${review.author}-${review.text}`}><span aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span><blockquote>“{review.text}”</blockquote><footer><strong>{review.author}</strong>{review.source && <small>{review.source}</small>}</footer></article>)}</div>
+            <a className="button button-dark reviews-link" href={googleReviewsSearchUrl} target="_blank" rel="noreferrer">View ratings on Google ↗</a>
           </div>
-        </section>
+        </section>}
 
         <section className="section areas-section" id="areas">
           <div className="page-container">
@@ -647,7 +484,7 @@ function App() {
           <div className="page-container privacy-layout">
             <div><p className="eyebrow">Privacy notice</p><h2 id="privacy-heading">Your project information stays purposeful.</h2><p className="privacy-updated">Website privacy notice · Greenstone Painting Limited</p></div>
             <div className="privacy-content">
-              <article><h3>What we collect</h3><p>When you request a quote, we collect the contact details, property location, project description, service selection, and any project photos you choose to provide.</p></article>
+              <article><h3>What we collect</h3><p>When you request a quote, we collect your contact details, property location, project description, and service selection.</p></article>
               <article><h3>How we use it</h3><p>We use this information to assess your project, contact you, arrange a site visit, prepare or follow up a quote, maintain relevant business records, and operate this service securely.</p></article>
               <article><h3>Storage and sharing</h3><p>We limit access to people and service providers who need the information to deliver or support the service. We do not sell your personal information. Information may also be disclosed where required by New Zealand law.</p></article>
               <article><h3>Retention and your rights</h3><p>We keep information only for as long as reasonably necessary for these purposes and applicable legal obligations. You may ask to access or correct your personal information by emailing <a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a>.</p></article>

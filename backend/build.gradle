@@ -23,16 +23,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-flyway'
     implementation 'org.flywaydb:flyway-core'
-    implementation 'org.apache.pdfbox:pdfbox:3.0.8'
 
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
     testRuntimeOnly 'com.h2database:h2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -40,12 +37,4 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
-}
-
-tasks.register('e2eBootRun', org.springframework.boot.gradle.tasks.run.BootRun) {
-    group = 'verification'
-    description = 'Runs the backend with the isolated end-to-end test profile.'
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'org.greenstone.backend.BackendApplication'
-    systemProperty 'spring.profiles.active', 'e2e'
 }

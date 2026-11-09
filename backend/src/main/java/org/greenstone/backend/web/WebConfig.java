@@ -26,8 +26,6 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        addPage(registry, "admin");
-        addPage(registry, "quote");
         addPage(registry, "services");
         addPage(registry, "projects");
         addPage(registry, "about");

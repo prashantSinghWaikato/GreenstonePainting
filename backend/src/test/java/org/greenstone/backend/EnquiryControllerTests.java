@@ -1,36 +1,23 @@
 package org.greenstone.backend;
 
-import org.greenstone.backend.persistence.entity.EnquiryStatus;
-import org.greenstone.backend.persistence.repository.EnquiryRepository;
-import org.greenstone.backend.persistence.repository.EnquiryAttachmentRepository;
 import org.greenstone.backend.notification.EnquiryNotifier;
 import org.greenstone.backend.persistence.entity.Enquiry;
+import org.greenstone.backend.persistence.entity.EnquiryStatus;
+import org.greenstone.backend.persistence.repository.EnquiryRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.file.Path;
-import java.util.regex.Pattern;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import org.mockito.ArgumentCaptor;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,50 +28,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class EnquiryControllerTests {
 
-    @TempDir
-    static Path uploadDirectory;
-
-    @DynamicPropertySource
-    static void uploadProperties(DynamicPropertyRegistry registry) {
-        registry.add("app.upload.directory", () -> uploadDirectory.toString());
-    }
-
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private EnquiryRepository enquiryRepository;
 
-    @Autowired
-    private EnquiryAttachmentRepository attachmentRepository;
-
     @MockitoBean
     private EnquiryNotifier enquiryNotifier;
 
     @Test
-    void createsAValidatedQuoteEnquiry() throws Exception {
+    void createsAValidatedQuoteEnquiryAndNotifiesTheTeam() throws Exception {
         var initialCount = enquiryRepository.countByStatus(EnquiryStatus.NEW);
 
         mockMvc.perform(post("/api/enquiries")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "firstName": "Aroha",
-                                  "lastName": "Williams",
-                                  "email": "aroha@example.com",
-                                  "phone": "021 555 0100",
-                                  "serviceSlug": "interior-painting",
-                                  "propertyAddress": "29 Example Street, Hamilton",
-                                  "message": "Please quote repainting a three-bedroom home."
-                                }
-                                """))
+                        .content(validRequest("interior-painting")))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/enquiries/")))
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.status").value("NEW"))
-                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+                .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.notificationSent").value(true));
 
         assertThat(enquiryRepository.countByStatus(EnquiryStatus.NEW)).isEqualTo(initialCount + 1);
+        verify(enquiryNotifier).sendNewQuoteNotification(any(Enquiry.class));
     }
 
     @Test
@@ -132,164 +100,22 @@ class EnquiryControllerTests {
     void rejectsUnavailableService() throws Exception {
         mockMvc.perform(post("/api/enquiries")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "firstName": "Aroha",
-                                  "lastName": "Williams",
-                                  "email": "aroha@example.com",
-                                  "phone": "021 555 0100",
-                                  "serviceSlug": "unknown-service",
-                                  "propertyAddress": "29 Example Street, Hamilton",
-                                  "message": "Please provide a quote."
-                                }
-                                """))
+                        .content(validRequest("unknown-service")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Selected service is not available."));
     }
 
-    @Test
-    void uploadsNoMoreThanFourPhotosWithTheEnquiryUploadToken() throws Exception {
-        var created = createQuoteEnquiry();
-        var enquiryId = jsonString(created, "id");
-        var uploadToken = jsonString(created, "uploadToken");
-
-        for (int index = 1; index <= 4; index++) {
-            var photo = new MockMultipartFile(
-                    "file",
-                    "project-" + index + ".jpg",
-                    MediaType.IMAGE_JPEG_VALUE,
-                    new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) index}
-            );
-            mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
-                            .file(photo)
-                            .header("X-Upload-Token", uploadToken))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.originalFilename").value("project-" + index + ".jpg"))
-                    .andExpect(jsonPath("$.contentType").value(MediaType.IMAGE_JPEG_VALUE));
-        }
-
-        var fifthPhoto = new MockMultipartFile(
-                "file", "project-5.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[]{1, 2, 3}
-        );
-        mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
-                        .file(fifthPhoto)
-                        .header("X-Upload-Token", uploadToken))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("A quote request can include up to 4 photos."));
-
-        assertThat(attachmentRepository.countByEnquiryId(java.util.UUID.fromString(enquiryId))).isEqualTo(4);
-    }
-
-    @Test
-    void rejectsPhotoUploadWithoutTheEnquiryUploadToken() throws Exception {
-        var created = createQuoteEnquiry();
-        var enquiryId = jsonString(created, "id");
-        var photo = new MockMultipartFile(
-                "file", "project.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[]{1, 2, 3}
-        );
-
-        mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
-                        .file(photo)
-                        .header("X-Upload-Token", "incorrect-token"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Photo upload access is invalid or has expired."));
-    }
-
-    @Test
-    void rejectsUnsupportedPhotoTypes() throws Exception {
-        var created = createQuoteEnquiry();
-        var enquiryId = jsonString(created, "id");
-        var uploadToken = jsonString(created, "uploadToken");
-        var document = new MockMultipartFile(
-                "file", "scope.pdf", MediaType.APPLICATION_PDF_VALUE, new byte[]{1, 2, 3}
-        );
-
-        mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
-                        .file(document)
-                        .header("X-Upload-Token", uploadToken))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Use a JPEG, PNG, WebP, HEIC, or HEIF photo."));
-    }
-
-    @Test
-    void rejectsPhotosLargerThanFiveMegabytes() throws Exception {
-        var created = createQuoteEnquiry();
-        var enquiryId = jsonString(created, "id");
-        var uploadToken = jsonString(created, "uploadToken");
-        var oversizedPhoto = new MockMultipartFile(
-                "file", "large-project.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[(5 * 1024 * 1024) + 1]
-        );
-
-        mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
-                        .file(oversizedPhoto)
-                        .header("X-Upload-Token", uploadToken))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Each photo must be 5 MB or smaller."));
-    }
-
-    @Test
-    void completesAnEnquiryOnceAndAllowsSecurePhotoDownload() throws Exception {
-        var created = createQuoteEnquiry();
-        var enquiryId = jsonString(created, "id");
-        var uploadToken = jsonString(created, "uploadToken");
-        var photo = new MockMultipartFile(
-                "file", "project.jpg", MediaType.IMAGE_JPEG_VALUE,
-                new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff, 1}
-        );
-        var uploaded = mockMvc.perform(multipart("/api/enquiries/{enquiryId}/attachments", enquiryId)
-                        .file(photo)
-                        .header("X-Upload-Token", uploadToken))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        var attachmentId = jsonString(uploaded, "id");
-
-        mockMvc.perform(post("/api/enquiries/{enquiryId}/complete", enquiryId)
-                        .header("X-Upload-Token", uploadToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.notificationSent").value(true))
-                .andExpect(jsonPath("$.completedAt").isNotEmpty());
-        mockMvc.perform(post("/api/enquiries/{enquiryId}/complete", enquiryId)
-                        .header("X-Upload-Token", uploadToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.notificationSent").value(true));
-
-        var reviewToken = ArgumentCaptor.forClass(String.class);
-        verify(enquiryNotifier, times(1)).sendNewQuoteNotification(any(Enquiry.class), anyList(), reviewToken.capture());
-
-        mockMvc.perform(get("/api/enquiries/{enquiryId}/attachments/{attachmentId}", enquiryId, attachmentId)
-                        .param("token", reviewToken.getValue()))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", MediaType.IMAGE_JPEG_VALUE))
-                .andExpect(header().string("Cache-Control", "private, no-store"));
-    }
-
-    private String createQuoteEnquiry() throws Exception {
-        return mockMvc.perform(post("/api/enquiries")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "firstName": "Aroha",
-                                  "lastName": "Williams",
-                                  "email": "aroha@example.com",
-                                  "phone": "021 555 0100",
-                                  "serviceSlug": "interior-painting",
-                                  "propertyAddress": "29 Example Street, Hamilton",
-                                  "message": "Please quote repainting a three-bedroom home."
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.uploadToken").isNotEmpty())
-                .andExpect(jsonPath("$.uploadExpiresAt").isNotEmpty())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-    }
-
-    private String jsonString(String json, String field) {
-        var matcher = Pattern.compile("\\\"" + field + "\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").matcher(json);
-        if (!matcher.find()) {
-            throw new AssertionError("Response did not contain " + field);
-        }
-        return matcher.group(1);
+    private String validRequest(String serviceSlug) {
+        return """
+                {
+                  "firstName": "Aroha",
+                  "lastName": "Williams",
+                  "email": "aroha@example.com",
+                  "phone": "021 555 0100",
+                  "serviceSlug": "%s",
+                  "propertyAddress": "29 Example Street, Hamilton",
+                  "message": "Please quote repainting a three-bedroom home."
+                }
+                """.formatted(serviceSlug);
     }
 }

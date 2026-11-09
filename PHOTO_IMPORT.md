@@ -8,4 +8,4 @@ User-supplied batches added to the project gallery. Video excluded. Original fil
 
 40 unique assets; 5.60 MiB total.
 
-Locations and before/after pairings are not inferred. Categories follow the supplied labels. These bundled galleries are maintained in frontend/src/data/projectPhotos.ts; the existing admin-managed featured projects remain separate.
+Locations and before/after pairings are not inferred. Categories follow the supplied labels. These bundled galleries are maintained in `frontend/src/data/projectPhotos.ts`; featured public projects are loaded from the public content API.

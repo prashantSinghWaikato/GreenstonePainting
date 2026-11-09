@@ -9,7 +9,6 @@ public record EnquiryResponse(
         UUID id,
         EnquiryStatus status,
         OffsetDateTime createdAt,
-        String uploadToken,
-        OffsetDateTime uploadExpiresAt
+        boolean notificationSent
 ) {
 }

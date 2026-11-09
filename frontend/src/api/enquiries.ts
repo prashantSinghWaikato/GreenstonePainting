@@ -12,21 +12,6 @@ export type EnquiryResponse = {
   id: string
   status: 'NEW'
   createdAt: string
-  uploadToken: string
-  uploadExpiresAt: string
-}
-
-export type EnquiryAttachmentResponse = {
-  id: string
-  originalFilename: string
-  contentType: string
-  sizeBytes: number
-  createdAt: string
-}
-
-export type EnquiryCompletionResponse = {
-  id: string
-  completedAt: string
   notificationSent: boolean
 }
 
@@ -63,44 +48,4 @@ export async function createEnquiry(request: CreateEnquiryRequest): Promise<Enqu
   }
 
   return response.json() as Promise<EnquiryResponse>
-}
-
-export async function uploadEnquiryPhoto(enquiryId: string, uploadToken: string, file: File): Promise<EnquiryAttachmentResponse> {
-  const formData = new FormData()
-  formData.append('file', withInferredContentType(file))
-
-  const response = await fetch(`${apiBaseUrl}/api/enquiries/${enquiryId}/attachments`, {
-    method: 'POST',
-    headers: { 'X-Upload-Token': uploadToken },
-    body: formData,
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as ApiError
-    throw new Error(error.message ?? `We could not upload ${file.name}.`)
-  }
-
-  return response.json() as Promise<EnquiryAttachmentResponse>
-}
-
-export async function completeEnquiry(enquiryId: string, uploadToken: string): Promise<EnquiryCompletionResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/enquiries/${enquiryId}/complete`, {
-    method: 'POST',
-    headers: { 'X-Upload-Token': uploadToken },
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as ApiError
-    throw new Error(error.message ?? 'Your request was saved, but we could not notify our team yet.')
-  }
-
-  return response.json() as Promise<EnquiryCompletionResponse>
-}
-
-function withInferredContentType(file: File): File {
-  if (file.type) return file
-
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  const contentType = extension === 'heic' ? 'image/heic' : extension === 'heif' ? 'image/heif' : ''
-  return contentType ? new File([file], file.name, { type: contentType, lastModified: file.lastModified }) : file
 }
