@@ -1,13 +1,24 @@
-import { useEffect, useState } from 'react'
-import { ArrowLeft, ArrowRight, LoaderCircle, Mail, MapPin, Paintbrush, Phone } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Mail, MapPin, Paintbrush, Phone } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
-import { getPublishedArticles, type PublishedArticle } from './api/articles'
-import { getPublishedServices } from './api/services'
 import { parseArticleBody, type ArticleBlock } from './articleContent'
 import { blogPosts } from './data/blog'
 import { services as fallbackServices } from './data/site'
 import './App.css'
 import './Blog.css'
+
+type PublishedArticle = {
+  slug: string
+  path: string
+  title: string
+  shortTitle: string
+  topic: string
+  excerpt: string
+  body: string
+  readTimeMinutes: number
+  image: string
+  imageAlt: string
+  publishedAt: string
+}
 
 export function PublicHeader({ active }: { active?: 'services' | 'projects' | 'blog' | 'about' | 'areas' | 'contact' }) {
   return <>
@@ -34,15 +45,7 @@ export function PublicHeader({ active }: { active?: 'services' | 'projects' | 'b
 }
 
 export function PublicFooter() {
-  const [services, setServices] = useState(fallbackServices)
-
-  useEffect(() => {
-    let active = true
-    getPublishedServices().then((published) => {
-      if (active) setServices(published.map((service) => ({ slug: service.slug, code: '', title: service.title, description: service.summary })))
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
+  const services = fallbackServices
 
   return <footer className="site-footer">
     <div className="page-container footer-main">
@@ -177,22 +180,8 @@ function NotFound() {
 
 export default function Blog() {
   const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`
-  const [posts, setPosts] = useState<PublishedArticle[]>(fallbackArticles)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let active = true
-    getPublishedArticles()
-      .then((response) => { if (active) setPosts(response) })
-      .catch(() => { /* Existing articles remain available if the API is temporarily offline. */ })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [])
-
-  const knownBeforeLoad = posts.some((post) => post.path === pathname)
+  const posts = fallbackArticles()
   return <div className="site-shell blog-shell"><PublicHeader active="blog" /><main id="main-content">{pathname === '/blog/'
     ? <BlogIndex posts={posts} />
-    : loading && !knownBeforeLoad
-      ? <section className="blog-loading"><LoaderCircle aria-hidden="true" /><span>Loading article…</span></section>
-      : <ArticlePage pathname={pathname} posts={posts} />}</main><PublicFooter /></div>
+    : <ArticlePage pathname={pathname} posts={posts} />}</main><PublicFooter /></div>
 }

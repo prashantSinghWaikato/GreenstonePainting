@@ -2,11 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AlertCircle, Building2, Fence, Hammer, House, Mail, MapPin, PaintBucket, Paintbrush, Palette, Phone } from 'lucide-react'
 import { FaFacebookF, FaInstagram } from 'react-icons/fa'
-import { createEnquiry, EnquiryApiError } from './api/enquiries'
-import { getPublishedArticles, type PublishedArticle } from './api/articles'
-import { getPublishedProjects, type PublishedProject } from './api/projects'
-import { fallbackColours, getPaletteColours } from './api/colours'
-import { getPublishedServices } from './api/services'
+import { paletteColours } from './data/colours'
 import { articles as fallbackArticles, heroSlides, projects, serviceAreas, services as fallbackServices } from './data/site'
 import { customerReviews } from './data/reviews'
 import ColourStudio from './ColourStudio'
@@ -37,6 +33,8 @@ const serviceIconBySlug = new Map(fallbackServices.map((service, index) => [serv
 const googleReviewsSearchUrl = 'https://www.google.com/search?q=Greenstone+Painting+Limited+Hamilton+reviews'
 
 type QuoteFormErrors = Partial<Record<keyof QuoteFormState, string>>
+
+type FeaturedProject = (typeof projects)[number] & { slug: string; highlights: string[] }
 
 const fieldLabels: Record<keyof QuoteFormState, string> = {
   firstName: 'First name',
@@ -96,9 +94,9 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeHero, setActiveHero] = useState(0)
   const [activeProject, setActiveProject] = useState(0)
-  const [portfolioProjects, setPortfolioProjects] = useState<PublishedProject[]>(projects.map((project) => ({ ...project, slug: project.title, highlights: [] })))
-  const [services, setServices] = useState(fallbackServices)
-  const [journalArticles, setJournalArticles] = useState<Array<Pick<PublishedArticle, 'title' | 'topic' | 'path' | 'publishedAt'>>>(fallbackArticles.map((article) => ({ ...article, publishedAt: new Date(article.date).toISOString() })))
+  const portfolioProjects: FeaturedProject[] = projects.map((project) => ({ ...project, slug: project.title, highlights: [] }))
+  const services = fallbackServices
+  const journalArticles = fallbackArticles.map((article) => ({ ...article, publishedAt: new Date(article.date).toISOString() }))
   const [quoteForm, setQuoteForm] = useState(initialQuoteForm)
   const [submitting, setSubmitting] = useState(false)
   const [submissionReference, setSubmissionReference] = useState('')
@@ -109,49 +107,13 @@ function App() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [privacyError, setPrivacyError] = useState('')
   const [colourStudioOpen, setColourStudioOpen] = useState(false)
-  const [paletteColours, setPaletteColours] = useState(fallbackColours)
   const quoteFormRef = useRef<HTMLFormElement>(null)
-
-  useEffect(() => {
-    let active = true
-    getPaletteColours().then((colours) => {
-      if (active && colours.length) setPaletteColours(colours)
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       setActiveHero((current) => (current + 1) % heroSlides.length)
     }, 6500)
     return () => window.clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    getPublishedServices().then((published) => {
-      if (active) setServices(published.map((service) => ({ slug: service.slug, code: '', title: service.title, description: service.summary })))
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    getPublishedArticles().then((published) => {
-      if (active && published.length) setJournalArticles(published.slice(0, 3))
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    getPublishedProjects().then((published) => {
-      if (active && published.length) {
-        setPortfolioProjects(published)
-        setActiveProject(0)
-      }
-    }).catch(() => undefined)
-    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -226,39 +188,33 @@ function App() {
     setNotificationSent(false)
 
     try {
-      const response = await createEnquiry({
-        firstName: quoteForm.firstName,
-        lastName: quoteForm.lastName,
-        email: quoteForm.email,
-        phone: quoteForm.phone,
-        serviceSlug: quoteForm.service,
-        propertyAddress: quoteForm.location,
-        message: quoteForm.message,
+      const reference = crypto.randomUUID().slice(0, 8).toUpperCase()
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          'form-name': 'quote-request',
+          reference,
+          firstName: quoteForm.firstName.trim(),
+          lastName: quoteForm.lastName.trim(),
+          email: quoteForm.email.trim(),
+          phone: quoteForm.phone.trim(),
+          propertyAddress: quoteForm.location.trim(),
+          service: quoteForm.service,
+          message: quoteForm.message.trim(),
+          privacyAccepted: 'Yes',
+        }).toString(),
       })
-      setSubmissionReference(response.id.slice(0, 8).toUpperCase())
+      if (!response.ok) throw new Error('We could not submit your request. Please try again or call us.')
+      setSubmissionReference(reference)
       setQuoteForm(initialQuoteForm)
       setPrivacyAccepted(false)
       setPrivacyError('')
       setFieldErrors({})
-      setNotificationSent(response.notificationSent)
-      setCompletionError(response.notificationSent ? '' : 'The request was saved, but the team email could not be sent. Please call us if your project is urgent.')
+      setNotificationSent(true)
+      setCompletionError('')
     } catch (error) {
-      if (error instanceof EnquiryApiError && Object.keys(error.fieldErrors).length > 0) {
-        const backendFieldMap: Record<string, keyof QuoteFormState> = {
-          firstName: 'firstName', lastName: 'lastName', email: 'email', phone: 'phone',
-          propertyAddress: 'location', serviceSlug: 'service', message: 'message',
-        }
-        const backendErrors = Object.entries(error.fieldErrors).reduce<QuoteFormErrors>((errors, [field, message]) => {
-          const mappedField = backendFieldMap[field]
-          if (mappedField) errors[mappedField] = message
-          return errors
-        }, {})
-        setFieldErrors(backendErrors)
-        setSubmissionError('')
-        focusFirstInvalidField()
-      } else {
-        setSubmissionError(error instanceof Error ? error.message : 'We could not submit your request. Please try again.')
-      }
+      setSubmissionError(error instanceof Error ? error.message : 'We could not submit your request. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -420,7 +376,12 @@ function App() {
         <section className="section quote-section" id="quote">
           <div className="page-container quote-layout">
             <div className="quote-intro"><p className="eyebrow eyebrow-light">Online project request</p><h2>Start with a clearer quote.</h2><p>Tell us about your property and we will arrange the right next step.</p><div className="quote-assurance"><span>What happens next</span><ol><li>We review your project details</li><li>Our team contacts you</li><li>We arrange a site visit if required</li></ol></div></div>
-            <form className="quote-form rounded-card shadow-enterprise ring-1 ring-white/10" ref={quoteFormRef} onSubmit={submitQuote} noValidate>
+            <form className="quote-form rounded-card shadow-enterprise ring-1 ring-white/10" name="quote-request" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" ref={quoteFormRef} onSubmit={submitQuote} noValidate>
+              <input type="hidden" name="form-name" value="quote-request" />
+              <label className="honeypot-field" aria-hidden="true">
+                Leave this field empty
+                <input name="bot-field" tabIndex={-1} autoComplete="off" />
+              </label>
               <div className="form-heading"><div><span>Request form</span><h3>{submissionReference ? 'Request received' : 'Project details'}</h3></div><p>{submissionReference ? `Reference ${submissionReference}` : 'Fields marked * are required'}</p></div>
               {!submissionReference && <>
               {Object.keys(fieldErrors).length > 0 && <div className="form-validation-summary" role="alert">
@@ -428,18 +389,18 @@ function App() {
                 <div><strong>Please check {Object.keys(fieldErrors).length === 1 ? 'this field' : 'the highlighted fields'}.</strong><ul>{(Object.entries(fieldErrors) as Array<[keyof QuoteFormState, string]>).map(([field, message]) => <li key={field}><a href={`#${fieldIds[field]}`}>{fieldLabels[field]}: {message}</a></li>)}</ul></div>
               </div>}
               <div className="form-row">
-                <label htmlFor={fieldIds.firstName}>First name *<input id={fieldIds.firstName} required maxLength={100} autoComplete="given-name" value={quoteForm.firstName} aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? 'quote-first-name-error' : undefined} onBlur={() => validateFieldOnBlur('firstName')} onChange={(event) => updateField('firstName', event.target.value)} />{fieldErrors.firstName && <span className="field-error" id="quote-first-name-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.firstName}</span>}</label>
-                <label htmlFor={fieldIds.lastName}>Last name *<input id={fieldIds.lastName} required maxLength={100} autoComplete="family-name" value={quoteForm.lastName} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? 'quote-last-name-error' : undefined} onBlur={() => validateFieldOnBlur('lastName')} onChange={(event) => updateField('lastName', event.target.value)} />{fieldErrors.lastName && <span className="field-error" id="quote-last-name-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.lastName}</span>}</label>
+                <label htmlFor={fieldIds.firstName}>First name *<input id={fieldIds.firstName} name="firstName" required maxLength={100} autoComplete="given-name" value={quoteForm.firstName} aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? 'quote-first-name-error' : undefined} onBlur={() => validateFieldOnBlur('firstName')} onChange={(event) => updateField('firstName', event.target.value)} />{fieldErrors.firstName && <span className="field-error" id="quote-first-name-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.firstName}</span>}</label>
+                <label htmlFor={fieldIds.lastName}>Last name *<input id={fieldIds.lastName} name="lastName" required maxLength={100} autoComplete="family-name" value={quoteForm.lastName} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? 'quote-last-name-error' : undefined} onBlur={() => validateFieldOnBlur('lastName')} onChange={(event) => updateField('lastName', event.target.value)} />{fieldErrors.lastName && <span className="field-error" id="quote-last-name-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.lastName}</span>}</label>
               </div>
               <div className="form-row">
-                <label htmlFor={fieldIds.email}>Email *<input id={fieldIds.email} required maxLength={254} type="email" autoComplete="email" value={quoteForm.email} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'quote-email-error' : undefined} onBlur={() => validateFieldOnBlur('email')} onChange={(event) => updateField('email', event.target.value)} />{fieldErrors.email && <span className="field-error" id="quote-email-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.email}</span>}</label>
-                <label htmlFor={fieldIds.phone}>Phone *<input id={fieldIds.phone} required maxLength={40} type="tel" inputMode="tel" autoComplete="tel" placeholder="e.g. 021 083 83831" value={quoteForm.phone} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? 'quote-phone-error' : undefined} onBlur={() => validateFieldOnBlur('phone')} onChange={(event) => updateField('phone', event.target.value)} />{fieldErrors.phone && <span className="field-error" id="quote-phone-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.phone}</span>}</label>
+                <label htmlFor={fieldIds.email}>Email *<input id={fieldIds.email} name="email" required maxLength={254} type="email" autoComplete="email" value={quoteForm.email} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'quote-email-error' : undefined} onBlur={() => validateFieldOnBlur('email')} onChange={(event) => updateField('email', event.target.value)} />{fieldErrors.email && <span className="field-error" id="quote-email-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.email}</span>}</label>
+                <label htmlFor={fieldIds.phone}>Phone *<input id={fieldIds.phone} name="phone" required maxLength={40} type="tel" inputMode="tel" autoComplete="tel" placeholder="e.g. 021 083 83831" value={quoteForm.phone} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? 'quote-phone-error' : undefined} onBlur={() => validateFieldOnBlur('phone')} onChange={(event) => updateField('phone', event.target.value)} />{fieldErrors.phone && <span className="field-error" id="quote-phone-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.phone}</span>}</label>
               </div>
-              <label htmlFor={fieldIds.location}>Property location *<input id={fieldIds.location} required maxLength={300} autoComplete="street-address" value={quoteForm.location} aria-invalid={Boolean(fieldErrors.location)} aria-describedby={fieldErrors.location ? 'quote-location-error' : undefined} onBlur={() => validateFieldOnBlur('location')} onChange={(event) => updateField('location', event.target.value)} />{fieldErrors.location && <span className="field-error" id="quote-location-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.location}</span>}</label>
-              <label htmlFor={fieldIds.service}>Service required *<select id={fieldIds.service} required value={quoteForm.service} aria-invalid={Boolean(fieldErrors.service)} aria-describedby={fieldErrors.service ? 'quote-service-error' : undefined} onBlur={() => validateFieldOnBlur('service')} onChange={(event) => updateField('service', event.target.value)}><option value="">Select a service</option>{services.map((service) => <option value={service.slug} key={service.slug}>{service.title}</option>)}</select>{fieldErrors.service && <span className="field-error" id="quote-service-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.service}</span>}</label>
-              <label htmlFor={fieldIds.message}>Project description *<textarea id={fieldIds.message} required maxLength={10000} rows={4} placeholder="Property type, surfaces to paint, preferred timing, and anything else we should know." value={quoteForm.message} aria-invalid={Boolean(fieldErrors.message)} aria-describedby={fieldErrors.message ? 'quote-message-error' : undefined} onBlur={() => validateFieldOnBlur('message')} onChange={(event) => updateField('message', event.target.value)} />{fieldErrors.message && <span className="field-error" id="quote-message-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.message}</span>}</label>
+              <label htmlFor={fieldIds.location}>Property location *<input id={fieldIds.location} name="propertyAddress" required maxLength={300} autoComplete="street-address" value={quoteForm.location} aria-invalid={Boolean(fieldErrors.location)} aria-describedby={fieldErrors.location ? 'quote-location-error' : undefined} onBlur={() => validateFieldOnBlur('location')} onChange={(event) => updateField('location', event.target.value)} />{fieldErrors.location && <span className="field-error" id="quote-location-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.location}</span>}</label>
+              <label htmlFor={fieldIds.service}>Service required *<select id={fieldIds.service} name="service" required value={quoteForm.service} aria-invalid={Boolean(fieldErrors.service)} aria-describedby={fieldErrors.service ? 'quote-service-error' : undefined} onBlur={() => validateFieldOnBlur('service')} onChange={(event) => updateField('service', event.target.value)}><option value="">Select a service</option>{services.map((service) => <option value={service.slug} key={service.slug}>{service.title}</option>)}</select>{fieldErrors.service && <span className="field-error" id="quote-service-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.service}</span>}</label>
+              <label htmlFor={fieldIds.message}>Project description *<textarea id={fieldIds.message} name="message" required maxLength={10000} rows={4} placeholder="Property type, surfaces to paint, preferred timing, and anything else we should know." value={quoteForm.message} aria-invalid={Boolean(fieldErrors.message)} aria-describedby={fieldErrors.message ? 'quote-message-error' : undefined} onBlur={() => validateFieldOnBlur('message')} onChange={(event) => updateField('message', event.target.value)} />{fieldErrors.message && <span className="field-error" id="quote-message-error"><AlertCircle size={13} aria-hidden="true" />{fieldErrors.message}</span>}</label>
               <label className="privacy-acknowledgement" htmlFor="quote-privacy">
-                <input id="quote-privacy" type="checkbox" required checked={privacyAccepted} aria-invalid={Boolean(privacyError)} aria-describedby={privacyError ? 'quote-privacy-error' : 'quote-privacy-help'} onChange={(event) => { setPrivacyAccepted(event.target.checked); setPrivacyError('') }} />
+                <input id="quote-privacy" name="privacyAccepted" type="checkbox" value="Yes" required checked={privacyAccepted} aria-invalid={Boolean(privacyError)} aria-describedby={privacyError ? 'quote-privacy-error' : 'quote-privacy-help'} onChange={(event) => { setPrivacyAccepted(event.target.checked); setPrivacyError('') }} />
                 <span>I have read the <a href="#privacy">Privacy Notice</a> and understand how my contact details and project information will be used.</span>
               </label>
               <small className="privacy-help" id="quote-privacy-help">We use these details only to assess and respond to your project request.</small>
@@ -456,7 +417,7 @@ function App() {
 
         {customerReviews.length > 0 && <section className="section reviews-section" id="reviews">
           <div className="page-container">
-            <div className="section-heading review-heading"><div><p className="eyebrow">Customer confidence</p><h2>Trusted by customers<br />across Hamilton.</h2></div><a className="rating-summary google-rating-summary" href={googleReviewsSearchUrl} target="_blank" rel="noreferrer"><strong>{(customerReviews.reduce((sum, review) => sum + review.rating, 0) / customerReviews.length).toFixed(1)}</strong><span aria-hidden="true">★★★★★</span><small>{customerReviews.length} featured reviews</small></a></div>
+            <div className="section-heading review-heading"><div><p className="eyebrow">Customer confidence</p><h2>Trusted by customers<br />across Hamilton.</h2></div></div>
             <div className="customer-review-grid">{customerReviews.map((review) => <article className="customer-review-card" key={`${review.author}-${review.text}`}><span aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span><blockquote>“{review.text}”</blockquote><footer><strong>{review.author}</strong>{review.source && <small>{review.source}</small>}</footer></article>)}</div>
             <a className="button button-dark reviews-link" href={googleReviewsSearchUrl} target="_blank" rel="noreferrer">View ratings on Google ↗</a>
           </div>
@@ -486,7 +447,7 @@ function App() {
             <div className="privacy-content">
               <article><h3>What we collect</h3><p>When you request a quote, we collect your contact details, property location, project description, and service selection.</p></article>
               <article><h3>How we use it</h3><p>We use this information to assess your project, contact you, arrange a site visit, prepare or follow up a quote, maintain relevant business records, and operate this service securely.</p></article>
-              <article><h3>Storage and sharing</h3><p>We limit access to people and service providers who need the information to deliver or support the service. We do not sell your personal information. Information may also be disclosed where required by New Zealand law.</p></article>
+              <article><h3>Storage and sharing</h3><p>Quote requests are transmitted to and stored by Netlify Forms, which provides the website form service. We limit access to people and service providers who need the information to deliver or support the service. We do not sell your personal information. Information may also be disclosed where required by New Zealand law.</p></article>
               <article><h3>Retention and your rights</h3><p>We keep information only for as long as reasonably necessary for these purposes and applicable legal obligations. You may ask to access or correct your personal information by emailing <a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a>.</p></article>
             </div>
           </div>

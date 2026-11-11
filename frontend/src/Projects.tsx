@@ -1,22 +1,12 @@
-import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, MapPin, Paintbrush } from 'lucide-react'
 import { PublicFooter, PublicHeader } from './Blog'
 import { projects } from './data/site'
-import { getPublishedProjects, type PublishedProject } from './api/projects'
 import './Projects.css'
 import ProjectPhotoGallery from './ProjectPhotoGallery'
 
-const fallbackProjects: PublishedProject[] = projects.map((project) => ({ ...project, slug: project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), highlights: [project.category, 'Preparation-led finish', 'Quality-controlled outcome'] }))
+const portfolio = projects.map((project) => ({ ...project, slug: project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), highlights: [project.category, 'Preparation-led finish', 'Quality-controlled outcome'] }))
 
 export default function ProjectsPage() {
-  const [portfolio, setPortfolio] = useState<PublishedProject[]>(fallbackProjects)
-
-  useEffect(() => {
-    let active = true
-    getPublishedProjects().then((published) => { if (active && published.length) setPortfolio(published) }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
-
   return <div className="site-shell projects-page-shell">
     <PublicHeader active="projects" />
     <main id="main-content">

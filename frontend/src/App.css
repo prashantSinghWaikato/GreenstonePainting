@@ -147,6 +147,7 @@
 .quote-assurance li { margin: 13px 0; color: rgba(255,255,255,.74); font-size: .83rem; counter-increment: steps; }
 .quote-assurance li::before { margin-right: 10px; color: #52d6a5; content: '0' counter(steps); }
 .quote-form { display: flex; padding: 34px; border-radius: 14px; color: var(--ink); background: #fff; flex-direction: column; gap: 18px; box-shadow: 0 25px 65px rgba(0,0,0,.18); }
+.honeypot-field { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .form-heading { display: flex; margin-bottom: 2px; padding-bottom: 20px; border-bottom: 1px solid var(--line); align-items: end; justify-content: space-between; }
 .form-heading span { color: var(--accent-dark); font-size: .65rem; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
 .form-heading h3 { margin: 4px 0 0; font-family: 'Manrope', sans-serif; font-size: 1.65rem; }
@@ -184,13 +185,6 @@
 .form-error span { color: #6d463f; }
 
 .reviews-section { background: #f3f6f4; }
-.review-heading { grid-template-columns: 1fr auto; }
-.rating-summary { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 12px; }
-.rating-summary strong { font-family: 'Manrope', sans-serif; font-size: 3rem; font-weight: 500; }
-.rating-summary span { color: #e6a920; letter-spacing: .05em; }
-.rating-summary small { color: var(--ink-soft); font-size: .68rem; grid-column: 1 / 3; }
-.google-rating-summary { color: inherit; text-decoration: none; }
-.google-rating-summary:hover small { color: var(--accent-dark); }
 .google-reviews-overview { display: flex; padding: 30px 32px; border: 1px solid #d4dfdb; border-radius: 12px; background: #fff; box-shadow: 0 16px 38px rgba(11,39,31,.08); align-items: center; justify-content: space-between; gap: 28px; }
 .google-reviews-overview > div { display: flex; align-items: center; gap: 18px; }
 .google-review-mark { display: grid; width: 52px; height: 52px; border: 1px solid #dce3df; border-radius: 50%; color: #4285f4; background: #fff; box-shadow: 0 7px 18px rgba(8,24,39,.08); flex: 0 0 auto; font-family: Arial, sans-serif; font-size: 1.7rem; font-weight: 700; place-items: center; }

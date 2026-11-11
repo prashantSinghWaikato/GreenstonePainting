@@ -11,6 +11,20 @@
     <title>Greenstone Painting | Waikato Painters</title>
   </head>
   <body>
+    <!-- Static definition used by Netlify's build-time form detector. -->
+    <form name="quote-request" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="quote-request" />
+      <input name="bot-field" />
+      <input name="reference" />
+      <input name="firstName" />
+      <input name="lastName" />
+      <input name="email" type="email" />
+      <input name="phone" />
+      <input name="propertyAddress" />
+      <input name="service" />
+      <textarea name="message"></textarea>
+      <input name="privacyAccepted" />
+    </form>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

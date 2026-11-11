@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { House, Paintbrush, RotateCcw, Sofa, X } from 'lucide-react'
-import type { PaletteColour } from './api/colours'
+import type { PaletteColour } from './data/colours'
 import './ColourStudio.css'
 
 type Scene = 'interior' | 'exterior'

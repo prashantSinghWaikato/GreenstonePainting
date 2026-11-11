@@ -17,18 +17,11 @@ Thumbs.db
 !.env.example
 *.local
 
-# Java and Gradle output
-**/.gradle/
-**/build/
-**/out/
-*.class
-
 # Node and frontend output
 **/node_modules/
 **/dist/
 **/dist-ssr/
-**/playwright-report/
-**/test-results/
+.netlify/
 
 # Logs and temporary files
 logs/
@@ -39,7 +32,3 @@ yarn-error.log*
 pnpm-debug.log*
 *.tmp
 *.temp
-
-# Customer-uploaded files (local development only)
-data/uploads/
-backend/data/uploads/
