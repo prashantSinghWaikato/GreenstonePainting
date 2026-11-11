@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, ChevronLeft, Mail, MapPin, MessageCircle, Paintbrush, Phone, X } from 'lucide-react'
-import { getPublishedServices } from './api/services'
-import { serviceAreas, services as fallbackServices } from './data/site'
+import { serviceAreas, services } from './data/site'
 import './ChatAssistant.css'
 
 type ChatView = 'menu' | 'quote' | 'services' | 'coverage' | 'preparation' | 'contact' | 'surface-prep' | 'furniture' | 'colour'
@@ -25,17 +24,8 @@ function navigateToQuote(serviceSlug?: string) {
 export default function ChatAssistant() {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<ChatView>('menu')
-  const [services, setServices] = useState(fallbackServices)
   const launcherRef = useRef<HTMLButtonElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    let active = true
-    getPublishedServices().then((published) => {
-      if (active) setServices(published.map((service) => ({ slug: service.slug, code: '', title: service.title, description: service.summary })))
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
 
   useEffect(() => {
     if (!open) return

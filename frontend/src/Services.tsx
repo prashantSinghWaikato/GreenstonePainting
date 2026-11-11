@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react'
 import { ArrowRight, Building2, Check, Fence, Hammer, House, PaintBucket, Paintbrush } from 'lucide-react'
 import { PublicFooter, PublicHeader } from './Blog'
-import { getPublishedServices, type PublishedService } from './api/services'
 import { services } from './data/site'
 import './Services.css'
 
@@ -68,13 +66,13 @@ const serviceDetails = [
   },
 ]
 
-const fallbackPublishedServices: PublishedService[] = serviceDetails.map((detail, index) => ({
+const fallbackPublishedServices = serviceDetails.map((detail, index) => ({
   ...detail,
   summary: services.find((service) => service.slug === detail.slug)?.description ?? detail.description,
   displayOrder: index + 1,
 }))
 
-const orderServices = (items: PublishedService[]) => [...items].sort((a, b) => {
+const orderServices = <T extends { slug: string; displayOrder: number }>(items: T[]) => [...items].sort((a, b) => {
   if (a.slug === 'roof-painting') return 1
   if (b.slug === 'roof-painting') return -1
   return a.displayOrder - b.displayOrder
@@ -90,13 +88,7 @@ const serviceIconBySlug: Record<string, typeof Paintbrush> = {
 }
 
 export default function ServicesPage() {
-  const [publishedServices, setPublishedServices] = useState<PublishedService[]>(orderServices(fallbackPublishedServices))
-
-  useEffect(() => {
-    let active = true
-    getPublishedServices().then((response) => { if (active) setPublishedServices(orderServices(response)) }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
+  const publishedServices = orderServices(fallbackPublishedServices)
 
   return <div className="site-shell services-page-shell">
     <PublicHeader active="services" />
