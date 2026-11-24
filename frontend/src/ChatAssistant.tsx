@@ -75,7 +75,7 @@ export default function ChatAssistant() {
             <button type="button" onClick={() => setView('services')}><strong>Explore services</strong><span>Find the closest match</span><ArrowRight size={16} aria-hidden="true" /></button>
             <button type="button" onClick={() => setView('coverage')}><strong>Check service coverage</strong><span>Areas currently covered</span><ArrowRight size={16} aria-hidden="true" /></button>
             <button type="button" onClick={() => setView('preparation')}><strong>Project preparation</strong><span>Common questions</span><ArrowRight size={16} aria-hidden="true" /></button>
-            <button type="button" onClick={() => setView('contact')}><strong>Contact the team</strong><span>Phone, email, and office</span><ArrowRight size={16} aria-hidden="true" /></button>
+            <button type="button" onClick={() => setView('contact')}><strong>Contact the team</strong><span>Phone and email</span><ArrowRight size={16} aria-hidden="true" /></button>
           </div>
         </>}
 
@@ -110,7 +110,7 @@ export default function ChatAssistant() {
 
         {view === 'contact' && <>
           <div className="chat-message"><p>Choose the most convenient way to speak with Greenstone Painting.</p></div>
-          <div className="chat-contact-list"><a href="tel:+642108383831"><Phone size={18} aria-hidden="true" /><span><small>Call</small><strong>021 083 83831</strong></span></a><a href="mailto:info@greenstonepainting.co.nz"><Mail size={18} aria-hidden="true" /><span><small>Email</small><strong>info@greenstonepainting.co.nz</strong></span></a><a href="https://www.google.com/maps/search/?api=1&query=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand" target="_blank" rel="noreferrer"><MapPin size={18} aria-hidden="true" /><span><small>Office</small><strong>29 Lachlan Drive, Dinsdale</strong></span></a></div>
+          <div className="chat-contact-list"><a href="tel:+642108383831"><Phone size={18} aria-hidden="true" /><span><small>Call</small><strong>021 083 83831</strong></span></a><a href="mailto:info@greenstonepainting.co.nz"><Mail size={18} aria-hidden="true" /><span><small>Email</small><strong>info@greenstonepainting.co.nz</strong></span></a></div>
         </>}
       </div>
 

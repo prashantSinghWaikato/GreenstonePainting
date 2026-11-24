@@ -30,7 +30,7 @@ const initialQuoteForm: QuoteFormState = {
 
 const serviceIcons = [Paintbrush, House, Building2, PaintBucket, Hammer, Fence]
 const serviceIconBySlug = new Map(fallbackServices.map((service, index) => [service.slug, serviceIcons[index]]))
-const googleReviewsSearchUrl = 'https://www.google.com/search?q=Greenstone+Painting+Limited+Hamilton+reviews'
+const googleReviewsSearchUrl = 'https://www.google.com/search?q=Greenstone+Painting+Hamilton+reviews'
 
 type QuoteFormErrors = Partial<Record<keyof QuoteFormState, string>>
 
@@ -251,8 +251,8 @@ function App() {
 
       <header className="site-header">
         <div className="page-container header-inner">
-          <a className="brand brand-logo" href="#top" aria-label="Greenstone Painting Limited home">
-            <img src="/images/greenstone-logo.png" alt="Greenstone Painting Limited" />
+          <a className="brand brand-logo" href="#top" aria-label="Greenstone Painting home">
+            <img src="/images/greenstone-logo-v2.png" alt="Greenstone Painting" />
           </a>
 
           <button className="menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}>
@@ -432,8 +432,7 @@ function App() {
 
         <section className="section contact-location-section" id="contact">
           <div className="page-container contact-location-layout">
-            <div className="contact-info-panel"><p className="eyebrow eyebrow-light">Contact info</p><h2>Visit or speak with our Hamilton team.</h2><p>Contact Greenstone Painting to discuss your property, arrange a site visit, or request a project quote.</p><div className="contact-details"><a href="https://www.google.com/maps/search/?api=1&query=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand" target="_blank" rel="noreferrer"><MapPin size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Office address</small><strong>29 Lachlan Drive<br />Dinsdale, Hamilton</strong></span></a><a href="tel:+642108383831"><Phone size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Phone</small><strong>021 083 83831</strong></span></a><a href="mailto:info@greenstonepainting.co.nz"><Mail size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Email</small><strong>info@greenstonepainting.co.nz</strong></span></a></div></div>
-            <div className="map-card google-map-card rounded-card shadow-enterprise ring-1 ring-white/10"><iframe src="https://www.google.com/maps?q=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand&amp;output=embed" title="Google Map showing Greenstone Painting at 29 Lachlan Drive, Dinsdale" loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen /><div className="map-footer"><span>Greenstone Painting office</span><a href="https://www.google.com/maps/search/?api=1&query=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand" target="_blank" rel="noreferrer">Open in Google Maps ↗</a></div></div>
+            <div className="contact-info-panel"><p className="eyebrow eyebrow-light">Contact info</p><h2>Speak with our Hamilton team.</h2><p>Contact Greenstone Painting to discuss your property, arrange a site visit, or request a project quote.</p><div className="contact-details"><a href="tel:+642108383831"><Phone size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Phone</small><strong>021 083 83831</strong></span></a><a href="mailto:info@greenstonepainting.co.nz"><Mail size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Email</small><strong>info@greenstonepainting.co.nz</strong></span></a></div></div>
           </div>
         </section>
 
@@ -443,7 +442,7 @@ function App() {
 
         <section className="section privacy-section" id="privacy" aria-labelledby="privacy-heading">
           <div className="page-container privacy-layout">
-            <div><p className="eyebrow">Privacy notice</p><h2 id="privacy-heading">Your project information stays purposeful.</h2><p className="privacy-updated">Website privacy notice · Greenstone Painting Limited</p></div>
+            <div><p className="eyebrow">Privacy notice</p><h2 id="privacy-heading">Your project information stays purposeful.</h2><p className="privacy-updated">Website privacy notice · Greenstone Painting</p></div>
             <div className="privacy-content">
               <article><h3>What we collect</h3><p>When you request a quote, we collect your contact details, property location, project description, and service selection.</p></article>
               <article><h3>How we use it</h3><p>We use this information to assess your project, contact you, arrange a site visit, prepare or follow up a quote, maintain relevant business records, and operate this service securely.</p></article>
@@ -458,12 +457,12 @@ function App() {
 
       <footer className="site-footer" id="footer">
         <div className="page-container footer-main">
-          <div className="footer-brand"><a className="brand brand-logo brand-logo-footer" href="#top" aria-label="Greenstone Painting Limited home"><img src="/images/greenstone-logo.png" alt="Greenstone Painting Limited" /></a><p>Professional residential and commercial painting throughout Waikato.</p><a className="footer-call" href="tel:+642108383831">021 083 83831</a></div>
+          <div className="footer-brand"><a className="brand brand-logo brand-logo-footer" href="#top" aria-label="Greenstone Painting home"><img src="/images/greenstone-logo-v2.png" alt="Greenstone Painting" /></a><p>Professional residential and commercial painting throughout Waikato.</p><a className="footer-call" href="tel:+642108383831">021 083 83831</a></div>
           <div className="footer-column"><h2>Services</h2>{services.slice(0, 5).map((service) => <a href={`/services/#${service.slug}`} key={service.slug}>{service.title}</a>)}</div>
           <div className="footer-column"><h2>Company</h2><a href="/about/">About Us</a><a href="/projects/">Projects</a><a href="/service-areas/">Service Areas</a><a href="/blog/">Blog</a><a href="/contact/">Contact</a><a href="#quote">Get a Quote</a></div>
-          <div className="footer-column"><h2>Contact</h2><a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a><a href="https://www.google.com/maps/search/?api=1&query=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand" target="_blank" rel="noreferrer">29 Lachlan Drive<br />Dinsdale, Hamilton</a><div className="social-row"><a className="social-instagram" href="https://www.instagram.com/greenstonepainting.nz/" target="_blank" rel="noreferrer" aria-label="Follow Greenstone Painting on Instagram"><FaInstagram size={16} aria-hidden="true" /></a><a className="social-facebook" href="https://www.facebook.com/greenstonepainting/" target="_blank" rel="noreferrer" aria-label="Visit Greenstone Painting on Facebook"><FaFacebookF size={15} aria-hidden="true" /></a></div></div>
+          <div className="footer-column"><h2>Contact</h2><a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a><div className="social-row"><a className="social-instagram" href="https://www.instagram.com/greenstonepainting.nz/" target="_blank" rel="noreferrer" aria-label="Follow Greenstone Painting on Instagram"><FaInstagram size={16} aria-hidden="true" /></a><a className="social-facebook" href="https://www.facebook.com/greenstonepainting/" target="_blank" rel="noreferrer" aria-label="Visit Greenstone Painting on Facebook"><FaFacebookF size={15} aria-hidden="true" /></a></div></div>
         </div>
-        <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting Limited</span><a href="/privacy/">Privacy Notice</a></div>
+        <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting</span><a href="/privacy/">Privacy Notice</a></div>
       </footer>
       <ColourStudio open={colourStudioOpen} onClose={closeColourStudio} colours={paletteColours} />
     </div>

@@ -1,6 +1,6 @@
 # Greenstone Painting Website
 
-Production marketing website for Greenstone Painting Limited in Hamilton, New Zealand. The site is a static React application deployed on Netlify.
+Production marketing website for Greenstone Painting in Hamilton, New Zealand. The site is a static React application deployed on Netlify.
 
 ## Features
 

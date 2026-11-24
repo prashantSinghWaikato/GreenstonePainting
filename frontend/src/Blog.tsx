@@ -34,7 +34,7 @@ export function PublicHeader({ active }: { active?: 'services' | 'projects' | 'b
     </div>
     <header className="site-header blog-header">
       <div className="page-container header-inner">
-        <a className="brand brand-logo" href="/" aria-label="Greenstone Painting Limited home"><img src="/images/greenstone-logo.png" alt="Greenstone Painting Limited" /></a>
+        <a className="brand brand-logo" href="/" aria-label="Greenstone Painting home"><img src="/images/greenstone-logo-v2.png" alt="Greenstone Painting" /></a>
         <nav className="blog-nav" aria-label="Primary navigation">
           <a href="/">Home</a><a className={active === 'services' ? 'is-active' : undefined} href="/services/">Services</a><a className={active === 'projects' ? 'is-active' : undefined} href="/projects/">Projects</a><a className={active === 'about' ? 'is-active' : undefined} href="/about/">About Us</a><a className={active === 'areas' ? 'is-active' : undefined} href="/service-areas/">Service Areas</a><a className={active === 'blog' ? 'is-active' : undefined} href="/blog/">Blog</a><a className={active === 'contact' ? 'is-active' : undefined} href="/contact/">Contact</a>
         </nav>
@@ -49,12 +49,12 @@ export function PublicFooter() {
 
   return <footer className="site-footer">
     <div className="page-container footer-main">
-      <div className="footer-brand"><a className="brand brand-logo brand-logo-footer" href="/" aria-label="Greenstone Painting Limited home"><img src="/images/greenstone-logo.png" alt="Greenstone Painting Limited" /></a><p>Professional residential and commercial painting throughout Waikato.</p><a className="footer-call" href="tel:+642108383831">021 083 83831</a></div>
+      <div className="footer-brand"><a className="brand brand-logo brand-logo-footer" href="/" aria-label="Greenstone Painting home"><img src="/images/greenstone-logo-v2.png" alt="Greenstone Painting" /></a><p>Professional residential and commercial painting throughout Waikato.</p><a className="footer-call" href="tel:+642108383831">021 083 83831</a></div>
       <div className="footer-column"><h2>Services</h2>{services.slice(0, 5).map((service) => <a href={`/services/#${service.slug}`} key={service.slug}>{service.title}</a>)}</div>
       <div className="footer-column"><h2>Company</h2><a href="/about/">About Us</a><a href="/projects/">Projects</a><a href="/service-areas/">Service Areas</a><a href="/blog/">Blog</a><a href="/contact/">Contact</a><a href="/#quote">Get a Quote</a></div>
-      <div className="footer-column"><h2>Contact</h2><a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a><a href="https://www.google.com/maps/search/?api=1&query=29+Lachlan+Drive,+Dinsdale,+Hamilton,+New+Zealand" target="_blank" rel="noreferrer">29 Lachlan Drive<br />Dinsdale, Hamilton</a><div className="social-row"><a href="https://www.instagram.com/greenstonepainting.nz/" target="_blank" rel="noreferrer" aria-label="Follow Greenstone Painting on Instagram"><FaInstagram size={16} aria-hidden="true" /></a><a href="https://www.facebook.com/greenstonepainting/" target="_blank" rel="noreferrer" aria-label="Visit Greenstone Painting on Facebook"><FaFacebookF size={15} aria-hidden="true" /></a></div></div>
+      <div className="footer-column"><h2>Contact</h2><a href="mailto:info@greenstonepainting.co.nz">info@greenstonepainting.co.nz</a><div className="social-row"><a href="https://www.instagram.com/greenstonepainting.nz/" target="_blank" rel="noreferrer" aria-label="Follow Greenstone Painting on Instagram"><FaInstagram size={16} aria-hidden="true" /></a><a href="https://www.facebook.com/greenstonepainting/" target="_blank" rel="noreferrer" aria-label="Visit Greenstone Painting on Facebook"><FaFacebookF size={15} aria-hidden="true" /></a></div></div>
     </div>
-    <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting Limited</span><a href="/privacy/">Privacy Notice</a></div>
+    <div className="page-container footer-bottom"><span>© {new Date().getFullYear()} Greenstone Painting</span><a href="/privacy/">Privacy Notice</a></div>
   </footer>
 }
 
