@@ -180,7 +180,7 @@ export function ContactPage() {
               <span>clear conversation.</span>
             </h1>
             <p>
-              Speak with our Hamilton team about your property, painting
+              Speak with our team about your property, painting
               requirements, or the right next step.
             </p>
           </div>
@@ -188,7 +188,6 @@ export function ContactPage() {
         <section className="section company-contact">
           <div className="page-container company-contact-grid">
             <div>
-              <p className="eyebrow">Contact information</p>
               <h2>Choose the most convenient way to reach us.</h2>
               <p>
                 For a project price, request a quote and include the property

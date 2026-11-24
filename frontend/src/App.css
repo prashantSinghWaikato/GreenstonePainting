@@ -424,6 +424,9 @@
 .brand-logo-footer { background: transparent; }
 .footer-column h2, .footer-call { color: #e0a64d; }
 
+/* Netlify Drop injects a promotional badge outside the application root. */
+#nl-badge-frame { display: none !important; }
+
 @media (max-width: 1180px) {
   .primary-nav { border-color: rgba(255,255,255,.12); background: #10263a; }
   .primary-nav a { border-color: rgba(255,255,255,.12); }

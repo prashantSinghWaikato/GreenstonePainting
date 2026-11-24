@@ -430,12 +430,6 @@ function App() {
           </div>
         </section>
 
-        <section className="section contact-location-section" id="contact">
-          <div className="page-container contact-location-layout">
-            <div className="contact-info-panel"><p className="eyebrow eyebrow-light">Contact info</p><h2>Speak with our Hamilton team.</h2><p>Contact Greenstone Painting to discuss your property, arrange a site visit, or request a project quote.</p><div className="contact-details"><a href="tel:+642108383831"><Phone size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Phone</small><strong>021 083 83831</strong></span></a><a href="mailto:info@greenstonepainting.co.nz"><Mail size={20} strokeWidth={1.8} aria-hidden="true" /><span><small>Email</small><strong>info@greenstonepainting.co.nz</strong></span></a></div></div>
-          </div>
-        </section>
-
         <section className="section insights-section" id="insights">
           <div className="page-container"><div className="section-heading insights-heading"><div><p className="eyebrow">Advice &amp; insights</p><h2>Better decisions before<br />the first coat.</h2></div><a className="inline-link" href="/blog/">View all articles →</a></div><div className="articles-grid">{journalArticles.map((article) => <article key={article.path}><span>{article.topic}</span><h3>{article.title}</h3><div><time dateTime={article.publishedAt}>{new Intl.DateTimeFormat('en-NZ', { dateStyle: 'medium', timeZone: 'Pacific/Auckland' }).format(new Date(article.publishedAt))}</time><a href={article.path} aria-label={`Read ${article.title}`}>Read article ↗</a></div></article>)}</div></div>
         </section>
